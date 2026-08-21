@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import SectionPlaceholderPage from '@/views/pages/SectionPlaceholderPage.vue'
 import LoginPage from '@/views/pages/LoginPage.vue'
+import ListPage from '@/views/pages/ListPage.vue'
+import DetailPage from '@/views/pages/DetailPage.vue'
+import UpdatePage from '@/views/pages/UpdatePage.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 const router = createRouter({
@@ -9,7 +11,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/main',
+      redirect: '/list',
     },
     {
       path: '/login',
@@ -22,12 +24,34 @@ const router = createRouter({
       },
     },
     {
-      path: '/main',
-      name: 'main-page',
-      component: SectionPlaceholderPage,
+      path: '/list',
+      name: 'list-page',
+      component: ListPage,
       meta: {
-        title: '메인',
-        description: '메인 화면은 추후 상세 기능을 추가할 예정입니다.',
+        title: '목록',
+      },
+    },
+    {
+      path: '/detail',
+      name: 'detail-page',
+      component: DetailPage,
+      meta: {
+        title: '상세',
+      },
+    },
+    {
+      path: '/update',
+      name: 'update-page',
+      component: UpdatePage,
+      meta: {
+        title: '수정',
+      },
+    },
+    {
+      path: '/main',
+      redirect: '/list',
+      meta: {
+        public: true,
       },
     },
   ],
@@ -41,7 +65,7 @@ router.beforeEach((to) => {
   }
 
   if (to.name === 'login-page' && authStore.isAuthenticated) {
-    return { path: '/main' }
+    return { path: '/list' }
   }
 
   return true

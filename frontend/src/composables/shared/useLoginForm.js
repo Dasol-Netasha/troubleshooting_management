@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 
-export const useLoginForm = ({ redirectTo = '/main' } = {}) => {
+export const useLoginForm = ({ redirectTo = '/list' } = {}) => {
   const router = useRouter()
   const authStore = useAuthStore()
 
