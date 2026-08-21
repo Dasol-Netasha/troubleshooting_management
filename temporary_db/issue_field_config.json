@@ -1,20 +1,20 @@
 [
-  { "field_key": "issue_description",        "label": "이슈내용",       "show_in_list": true,  "list_order": 1, "input_type": "textarea", "option_source": null },
-  { "field_key": "status_id",                "label": "현재상태",       "show_in_list": true,  "list_order": 2, "input_type": "dropdown", "option_source": "status" },
-  { "field_key": "priority_id",               "label": "우선순위",       "show_in_list": true,  "list_order": 3, "input_type": "dropdown", "option_source": "priority" },
-  { "field_key": "responsible_dept_id",       "label": "책임부서",       "show_in_list": true,  "list_order": 4, "input_type": "dropdown", "option_source": "responsible_dept" },
-  { "field_key": "occurred_date",             "label": "발생일자",       "show_in_list": true,  "list_order": 5, "input_type": "date",     "option_source": null },
-
-  { "field_key": "project_id",                "label": "프로젝트명",     "show_in_list": false, "list_order": null, "input_type": "dropdown", "option_source": "project" },
-  { "field_key": "phase_id",                  "label": "발생시점",       "show_in_list": false, "list_order": null, "input_type": "dropdown", "option_source": "occurrence_phase" },
-  { "field_key": "location_id",               "label": "발생위치",       "show_in_list": false, "list_order": null, "input_type": "dropdown", "option_source": "location" },
-  { "field_key": "tech_dept_id",               "label": "기술부서",       "show_in_list": false, "list_order": null, "input_type": "dropdown", "option_source": "tech_dept" },
-  { "field_key": "production_tech_owner_id",  "label": "생산기술담당자", "show_in_list": false, "list_order": null, "input_type": "dropdown", "option_source": "production_tech_owner" },
-  { "field_key": "root_cause",                "label": "발생원인",       "show_in_list": false, "list_order": null, "input_type": "textarea", "option_source": null },
-  { "field_key": "temp_action",               "label": "임시조치내용",   "show_in_list": false, "list_order": null, "input_type": "textarea", "option_source": null },
-  { "field_key": "is_long_term",              "label": "장기이슈여부",   "show_in_list": false, "list_order": null, "input_type": "boolean",  "option_source": null },
-  { "field_key": "completed_date",            "label": "완료일자",       "show_in_list": false, "list_order": null, "input_type": "date",     "option_source": null },
-  { "field_key": "root_countermeasure",       "label": "근본대책",       "show_in_list": false, "list_order": null, "input_type": "textarea", "option_source": null },
-  { "field_key": "purchase_request_no",       "label": "구매의뢰번호",   "show_in_list": false, "list_order": null, "input_type": "text",     "option_source": null },
-  { "field_key": "object_insert",             "label": "개체삽입",       "show_in_list": false, "list_order": null, "input_type": "text",     "option_source": null }
+  { "field_key": "project_id",               "label": "프로젝트명",     "show_in_list": false, "list_order": null, "detail_order": 1,  "input_type": "dropdown", "option_source": "project" },
+  { "field_key": "occurred_date",            "label": "발생일자",       "show_in_list": true,  "list_order": 5, "detail_order": 2,  "input_type": "date",     "option_source": null },
+  { "field_key": "phase_id",                 "label": "발생시점",       "show_in_list": false, "list_order": null, "detail_order": 3,  "input_type": "dropdown", "option_source": "occurrence_phase" },
+  { "field_key": "location_id",              "label": "발생위치",       "show_in_list": false, "list_order": null, "detail_order": 4,  "input_type": "dropdown", "option_source": "location" },
+  { "field_key": "issue_description",        "label": "이슈내용",       "show_in_list": true,  "list_order": 1, "detail_order": 5,  "input_type": "textarea", "option_source": null },
+  { "field_key": "responsible_dept_id",      "label": "책임부서",       "show_in_list": true,  "list_order": 4, "detail_order": 6,  "input_type": "dropdown", "option_source": "responsible_dept" },
+  { "field_key": "tech_dept_id",             "label": "기술부서",       "show_in_list": false, "list_order": null, "detail_order": 7,  "input_type": "dropdown", "option_source": "tech_dept" },
+  { "field_key": "production_tech_owner_id", "label": "생산기술담당자", "show_in_list": false, "list_order": null, "detail_order": 8, "input_type": "dropdown", "option_source": "production_tech_owner" },
+  { "field_key": "status_id",                "label": "현재상태",       "show_in_list": true,  "list_order": 2, "detail_order": 9,  "input_type": "dropdown", "option_source": "status" },
+  { "field_key": "priority_id",              "label": "우선순위",       "show_in_list": true,  "list_order": 3, "detail_order": 10,  "input_type": "dropdown", "option_source": "priority" },
+  { "field_key": "is_long_term",             "label": "장기이슈여부",   "show_in_list": false, "list_order": null, "detail_order": 11, "input_type": "boolean",  "option_source": null },
+  { "field_key": "root_cause",               "label": "발생원인",       "show_in_list": false, "list_order": null, "detail_order": 12, "input_type": "textarea", "option_source": null },
+  { "field_key": "temp_action",              "label": "임시조치내용",   "show_in_list": false, "list_order": null, "detail_order": 13, "input_type": "textarea", "option_source": null },
+  { "field_key": "root_countermeasure",      "label": "근본대책",       "show_in_list": false, "list_order": null, "detail_order": 14, "input_type": "textarea", "option_source": null },
+  { "field_key": "completed_date",           "label": "완료일자",       "show_in_list": false, "list_order": null, "detail_order": 15, "input_type": "date",     "option_source": null },
+  { "field_key": "purchase_request_no",      "label": "구매의뢰번호",   "show_in_list": false, "list_order": null, "detail_order": 16, "input_type": "text",     "option_source": null },
+  { "field_key": "object_insert",            "label": "개체삽입",       "show_in_list": false, "list_order": null, "detail_order": 17, "input_type": "text",     "option_source": null }
+  
 ]

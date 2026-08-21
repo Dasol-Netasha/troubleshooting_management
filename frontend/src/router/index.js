@@ -32,7 +32,7 @@ const router = createRouter({
       },
     },
     {
-      path: '/detail',
+      path: '/detail/:issueId',
       name: 'detail-page',
       component: DetailPage,
       meta: {

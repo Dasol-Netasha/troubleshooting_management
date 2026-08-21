@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useIssueListStore } from '@/stores/issueListStore'
 
 const TEXT_INPUT_TYPES = new Set(['text', 'textarea'])
+const sharedFilterValues = ref({})
 
 const sortByListOrder = (fields) => {
   return [...fields].sort((a, b) => {
@@ -14,7 +15,7 @@ const sortByListOrder = (fields) => {
 
 export const useIssueListPage = () => {
   const issueListStore = useIssueListStore()
-  const filterValues = ref({})
+  const filterValues = sharedFilterValues
 
   const listFields = computed(() => {
     const visible = issueListStore.fields.filter((field) => field?.show_in_list === true)

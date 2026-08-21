@@ -9,4 +9,7 @@ export const issueApi = {
   getListPageData(params) {
     return apiClient.get('/issues/list-page', { params })
   },
+  getDetail(issueId) {
+    return apiClient.get(`/issues/${issueId}`)
+  },
 }
