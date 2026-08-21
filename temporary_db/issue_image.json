@@ -1,0 +1,6 @@
+[
+  { "image_id": 1, "issue_id": 1, "image_path": "/uploads/issue_1/photo_1.jpg" },
+  { "image_id": 2, "issue_id": 1, "image_path": "/uploads/issue_1/photo_2.jpg" },
+  { "image_id": 3, "issue_id": 2, "image_path": "/uploads/issue_2/photo_1.jpg" }
+]
+
