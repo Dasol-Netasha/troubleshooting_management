@@ -1,25 +1,38 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import (
+    Issue,
+    IssueFieldConfig,
+    Location,
+    OccurrencePhase,
+    Priority,
+    ProductionTechOwner,
+    Project,
+    ResponsibleDept,
+    Status,
+    TechDept,
+)
 
 router = APIRouter(prefix="/issues", tags=["issues"])
 
-DB_ROOT = Path(__file__).resolve().parents[4] / "temporary_db"
-
-
-def _load_json(file_name: str) -> Any:
-    file_path = DB_ROOT / file_name
-    if not file_path.exists():
-        raise HTTPException(status_code=500, detail=f"Missing temporary db file: {file_name}")
-
-    try:
-        return json.loads(file_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail=f"Invalid JSON in {file_name}") from exc
+OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
+    "project": (Project, "project_id", "project_name"),
+    "occurrence_phase": (OccurrencePhase, "phase_id", "phase_name"),
+    "location": (Location, "location_id", "location_name"),
+    "responsible_dept": (ResponsibleDept, "dept_id", "dept_name"),
+    "tech_dept": (TechDept, "dept_id", "dept_name"),
+    "production_tech_owner": (ProductionTechOwner, "owner_id", "owner_name"),
+    "status": (Status, "status_id", "status_name"),
+    "priority": (Priority, "priority_id", "priority_name"),
+}
 
 
 def _sort_list_fields(field_config: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -27,41 +40,42 @@ def _sort_list_fields(field_config: list[dict[str, Any]]) -> list[dict[str, Any]
     return sorted(visible_fields, key=lambda field: field.get("list_order") or 9999)
 
 
-def _to_option_items(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    items: list[dict[str, Any]] = []
-    for row in rows:
-        keys = list(row.keys())
-        value_key = next((key for key in keys if key.endswith("_id")), keys[0] if keys else None)
-        label_key = next((key for key in keys if key.endswith("_name")), keys[1] if len(keys) > 1 else value_key)
-        if not value_key or not label_key:
-            continue
+def _fetch_option_rows(db: Session, source_name: str) -> list[dict[str, Any]]:
+    config = OPTION_SOURCE_CONFIG.get(source_name)
+    if not config:
+        return []
 
-        items.append(
-            {
-                "value": row.get(value_key),
-                "label": row.get(label_key),
-            }
-        )
-
-    return items
+    model_type, value_field, label_field = config
+    stmt = select(getattr(model_type, value_field), getattr(model_type, label_field)).order_by(
+        getattr(model_type, label_field)
+    )
+    rows = db.execute(stmt).all()
+    return [{"value": row[0], "label": row[1]} for row in rows]
 
 
-def _build_options_map(field_config: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+def _build_options_map_from_db(db: Session, field_config: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     sources = {
         field.get("option_source")
         for field in field_config
         if isinstance(field.get("option_source"), str) and field.get("option_source")
     }
+    return {source: _fetch_option_rows(db, source) for source in sorted(sources)}
 
-    options_map: dict[str, list[dict[str, Any]]] = {}
-    for source in sources:
-        option_rows = _load_json(f"{source}.json")
-        if isinstance(option_rows, list):
-            options_map[source] = _to_option_items(option_rows)
-        else:
-            options_map[source] = []
 
-    return options_map
+def _coerce_field_config(row: IssueFieldConfig) -> dict[str, Any]:
+    return {
+        "field_key": row.field_key,
+        "label": row.label,
+        "show_in_list": bool(row.show_in_list),
+        "list_order": row.list_order,
+        "detail_order": row.detail_order,
+        "input_type": row.input_type,
+        "option_source": row.option_source,
+    }
+
+
+def _issue_to_dict(issue: Issue) -> dict[str, Any]:
+    return {column.name: getattr(issue, column.name) for column in Issue.__table__.columns}
 
 
 def _attach_field_options(
@@ -140,15 +154,20 @@ def _apply_filters(
 
 
 @router.get("/list-page")
-def get_issue_list_page_data(filters: str | None = Query(default=None)) -> dict[str, Any]:
-    field_config = _load_json("issue_field_config.json")
-    issues = _load_json("issue.json")
+def get_issue_list_page_data(
+    filters: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    field_config_rows = db.execute(
+        select(IssueFieldConfig).order_by(IssueFieldConfig.list_order.asc().nulls_last())
+    ).scalars().all()
+    field_config = [_coerce_field_config(row) for row in field_config_rows]
 
-    if not isinstance(field_config, list) or not isinstance(issues, list):
-        raise HTTPException(status_code=500, detail="Invalid issue temporary db structure")
+    issue_rows = db.execute(select(Issue).order_by(Issue.issue_id)).scalars().all()
+    issues = [_issue_to_dict(issue) for issue in issue_rows]
 
     list_fields = _sort_list_fields(field_config)
-    options_map = _build_options_map(field_config)
+    options_map = _build_options_map_from_db(db, field_config)
     fields_with_options = _attach_field_options(list_fields, options_map)
 
     parsed_filters: dict[str, Any] | None = None

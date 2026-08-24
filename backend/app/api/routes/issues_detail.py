@@ -1,47 +1,55 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
-import json
-from pathlib import Path
+from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import (
+    Issue,
+    IssueFieldConfig,
+    IssueImage,
+    Location,
+    OccurrencePhase,
+    Priority,
+    ProductionTechOwner,
+    Project,
+    ResponsibleDept,
+    Status,
+    TechDept,
+)
 
 router = APIRouter(prefix="/issues", tags=["issues"])
 
-DB_ROOT = Path(__file__).resolve().parents[4] / "temporary_db"
+OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
+    "project": (Project, "project_id", "project_name"),
+    "occurrence_phase": (OccurrencePhase, "phase_id", "phase_name"),
+    "location": (Location, "location_id", "location_name"),
+    "responsible_dept": (ResponsibleDept, "dept_id", "dept_name"),
+    "tech_dept": (TechDept, "dept_id", "dept_name"),
+    "production_tech_owner": (ProductionTechOwner, "owner_id", "owner_name"),
+    "status": (Status, "status_id", "status_name"),
+    "priority": (Priority, "priority_id", "priority_name"),
+}
 
 
-def _load_json(file_name: str) -> Any:
-    file_path = DB_ROOT / file_name
-    if not file_path.exists():
-        raise HTTPException(status_code=500, detail=f"Missing temporary db file: {file_name}")
+def _fetch_option_rows(db: Session, source_name: str) -> dict[str, str]:
+    config = OPTION_SOURCE_CONFIG.get(source_name)
+    if not config:
+        return {}
 
-    try:
-        return json.loads(file_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail=f"Invalid JSON in {file_name}") from exc
-
-
-def _to_option_items(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    items: list[dict[str, Any]] = []
-    for row in rows:
-        keys = list(row.keys())
-        value_key = next((key for key in keys if key.endswith("_id")), keys[0] if keys else None)
-        label_key = next((key for key in keys if key.endswith("_name")), keys[1] if len(keys) > 1 else value_key)
-        if not value_key or not label_key:
-            continue
-
-        items.append(
-            {
-                "value": row.get(value_key),
-                "label": row.get(label_key),
-            }
-        )
-
-    return items
+    model_type, value_field, label_field = config
+    stmt = select(getattr(model_type, value_field), getattr(model_type, label_field)).order_by(
+        getattr(model_type, label_field)
+    )
+    rows = db.execute(stmt).all()
+    return {str(row[0]): str(row[1]) for row in rows}
 
 
-def _build_options_map(field_config: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+def _build_options_map_from_db(db: Session, field_config: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     sources = {
         field.get("option_source")
         for field in field_config
@@ -49,13 +57,9 @@ def _build_options_map(field_config: list[dict[str, Any]]) -> dict[str, list[dic
     }
 
     options_map: dict[str, list[dict[str, Any]]] = {}
-    for source in sources:
-        option_rows = _load_json(f"{source}.json")
-        if isinstance(option_rows, list):
-            options_map[source] = _to_option_items(option_rows)
-        else:
-            options_map[source] = []
-
+    for source in sorted(sources):
+        rows = _fetch_option_rows(db, source)
+        options_map[source] = [{"value": value, "label": label} for value, label in rows.items()]
     return options_map
 
 
@@ -78,9 +82,19 @@ def _build_option_lookup(options_map: dict[str, list[dict[str, Any]]]) -> dict[s
     return lookup
 
 
+def _to_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _resolve_display_value(raw_value: Any, input_type: str, option_source: str | None, option_lookup: dict[str, dict[str, Any]]) -> Any:
     if raw_value is None or raw_value == "":
         return "-"
+
+    if isinstance(raw_value, (date, datetime)):
+        return raw_value.isoformat()
 
     if input_type == "boolean":
         return "Yes" if bool(raw_value) else "No"
@@ -93,32 +107,44 @@ def _resolve_display_value(raw_value: Any, input_type: str, option_source: str |
     return raw_value
 
 
-def _to_int(value: Any, default: int) -> int:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
+def _field_config_to_dict(row: IssueFieldConfig) -> dict[str, Any]:
+    return {
+        "field_key": row.field_key,
+        "label": row.label,
+        "show_in_list": bool(row.show_in_list),
+        "list_order": row.list_order,
+        "detail_order": row.detail_order,
+        "input_type": row.input_type,
+        "option_source": row.option_source,
+    }
 
 
 @router.get("/{issue_id}")
-def get_issue_detail(issue_id: int) -> dict[str, Any]:
-    field_config = _load_json("issue_field_config.json")
-    issues = _load_json("issue.json")
-    issue_images = _load_json("issue_image.json")
-
-    if not isinstance(field_config, list) or not isinstance(issues, list) or not isinstance(issue_images, list):
-        raise HTTPException(status_code=500, detail="Invalid issue temporary db structure")
-
-    target = next((issue for issue in issues if int(issue.get("issue_id", -1)) == issue_id), None)
+def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    target = db.get(Issue, issue_id)
     if target is None:
         raise HTTPException(status_code=404, detail="Issue not found")
 
-    options_map = _build_options_map(field_config)
+    field_config_rows = db.execute(select(IssueFieldConfig)).scalars().all()
+    field_config = [_field_config_to_dict(row) for row in field_config_rows]
+
+    options_map = _build_options_map_from_db(db, field_config)
     option_lookup = _build_option_lookup(options_map)
     field_config_map = _build_field_config_map(field_config)
 
     fields: list[dict[str, Any]] = []
-    for key, raw_value in target.items():
+    for config in sorted(
+        field_config,
+        key=lambda item: (_to_int(item.get("detail_order"), 9999), str(item.get("field_key", ""))),
+    ):
+        key = config.get("field_key")
+        if not isinstance(key, str):
+            continue
+
+        if key not in Issue.__table__.columns.keys():
+            continue
+
+        raw_value = getattr(target, key)
         meta = field_config_map.get(key, {})
         option_source = meta.get("option_source") if isinstance(meta.get("option_source"), str) else None
         input_type = str(meta.get("input_type") or "text")
@@ -133,20 +159,13 @@ def get_issue_detail(issue_id: int) -> dict[str, Any]:
             }
         )
 
-    fields.sort(key=lambda item: (item.get("detail_order", 9999), str(item.get("key", ""))))
-
+    image_rows = db.execute(select(IssueImage).where(IssueImage.issue_id == issue_id)).scalars().all()
     images: list[dict[str, Any]] = []
-    for image in issue_images:
-        try:
-            if int(image.get("issue_id", -1)) != issue_id:
-                continue
-        except (TypeError, ValueError):
-            continue
-
+    for image in image_rows:
         images.append(
             {
-                "image_id": image.get("image_id"),
-                "image_path": image.get("image_path"),
+                "image_id": image.image_id,
+                "image_path": image.image_path,
             }
         )
 

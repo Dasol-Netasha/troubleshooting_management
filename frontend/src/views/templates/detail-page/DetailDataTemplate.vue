@@ -127,7 +127,7 @@ const spanCardClass = (rowSpan) => {
           class="grid grid-cols-1 gap-3 md:grid-cols-2"
           :class="{ 'md:grid-rows-2': sectionUsesTwoRows(section) }"
         >
-          <article
+          <div
             v-for="(row, rowIndex) in sectionRows(section.leftRows)"
             :key="`detail-layout-${sectionIndex}-left-${rowIndex}`"
             class="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2"
@@ -139,9 +139,9 @@ const spanCardClass = (rowSpan) => {
                 <p class="text-xl text-slate-800 whitespace-pre-wrap">{{ field.value }}</p>
               </div>
             </div>
-          </article>
+          </div>
 
-          <article
+          <div
             v-for="(row, rowIndex) in sectionRows(section.rightRows)"
             :key="`detail-layout-${sectionIndex}-right-${rowIndex}`"
             class="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2"
@@ -153,7 +153,7 @@ const spanCardClass = (rowSpan) => {
                 <p class="text-xl text-slate-800 whitespace-pre-wrap">{{ field.value }}</p>
               </div>
             </div>
-          </article>
+          </div>
         </div>
       </div>
     </div>
