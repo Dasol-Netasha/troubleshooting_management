@@ -74,6 +74,17 @@ def _coerce_field_config(row: IssueFieldConfig) -> dict[str, Any]:
     }
 
 
+def _is_required_issue_field(field_key: str) -> bool:
+    column = Issue.__table__.columns.get(field_key)
+    if column is None:
+        return False
+
+    if field_key in {"issue_id", "created_at", "updated_at"}:
+        return False
+
+    return bool(column.nullable is False and column.default is None and column.server_default is None)
+
+
 def _issue_to_dict(issue: Issue) -> dict[str, Any]:
     return {column.name: getattr(issue, column.name) for column in Issue.__table__.columns}
 
@@ -186,4 +197,43 @@ def get_issue_list_page_data(
         "rows": filtered_rows,
         "options_map": options_map,
         "total_count": len(filtered_rows),
+    }
+
+
+@router.get("/form-config")
+def get_issue_form_config(db: Session = Depends(get_db)) -> dict[str, Any]:
+    field_config_rows = db.execute(
+        select(IssueFieldConfig).order_by(IssueFieldConfig.detail_order.asc().nulls_last())
+    ).scalars().all()
+    field_config = [_coerce_field_config(row) for row in field_config_rows]
+
+    options_map = _build_options_map_from_db(db, field_config)
+
+    fields: list[dict[str, Any]] = []
+    for field in field_config:
+        field_key = field.get("field_key")
+        if not isinstance(field_key, str):
+            continue
+
+        if field_key not in Issue.__table__.columns.keys():
+            continue
+
+        source = field.get("option_source")
+        options = options_map.get(source, []) if isinstance(source, str) and source else []
+
+        fields.append(
+            {
+                "key": field_key,
+                "label": field.get("label", field_key),
+                "input_type": field.get("input_type") or "text",
+                "option_source": source,
+                "detail_order": field.get("detail_order"),
+                "required": _is_required_issue_field(field_key),
+                "options": options,
+            }
+        )
+
+    return {
+        "fields": fields,
+        "options_map": options_map,
     }

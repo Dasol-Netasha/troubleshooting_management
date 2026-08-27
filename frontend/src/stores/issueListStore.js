@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { issueApi } from '@/lib/api'
+import { issueService } from '@/services/issueService'
 
 export const useIssueListStore = defineStore('issueList', () => {
   const fields = ref([])
@@ -16,7 +16,7 @@ export const useIssueListStore = defineStore('issueList', () => {
     errorMessage.value = ''
 
     try {
-      const { data } = await issueApi.getListPageData({
+      const data = await issueService.getListPageData({
         filters: JSON.stringify(filters || {}),
       })
 
@@ -33,6 +33,16 @@ export const useIssueListStore = defineStore('issueList', () => {
     }
   }
 
+  const removeIssueById = (issueId) => {
+    const numericId = Number(issueId)
+    if (!Number.isInteger(numericId) || numericId <= 0) {
+      return
+    }
+
+    rows.value = rows.value.filter((row) => Number(row?.issue_id) !== numericId)
+    totalCount.value = rows.value.length
+  }
+
   return {
     fields,
     rows,
@@ -41,5 +51,6 @@ export const useIssueListStore = defineStore('issueList', () => {
     loading,
     errorMessage,
     fetchListPageData,
+    removeIssueById,
   }
 })

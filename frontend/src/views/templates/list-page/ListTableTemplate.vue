@@ -1,10 +1,26 @@
 <script setup>
+import { computed } from 'vue'
 import DataTable from '@/components/organisms/table/DataTable.vue'
 import { useRouter } from 'vue-router'
 import { useIssueListPage } from '@/composables/shared/useIssueListPage'
+import AddBtn from '@/views/organisms/list-page/AddBtn.vue'
+import EditBtn from '@/views/organisms/list-page/EditBtn.vue'
+import DeleteBtn from '@/views/organisms/list-page/DeleteBtn.vue'
 
 const { loading, errorMessage, totalCount, tableColumns, tableRows } = useIssueListPage()
 const router = useRouter()
+
+const tableColumnsWithActions = computed(() => {
+  return [
+    ...tableColumns.value,
+    {
+      key: '__actions',
+      label: '작업',
+      sortable: false,
+      align: 'center',
+    },
+  ]
+})
 
 const onRowClick = (row) => {
   const issueId = Number(row?.issue_id)
@@ -19,7 +35,10 @@ const onRowClick = (row) => {
   <section class="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
     <header class="flex items-center justify-between gap-2">
       <h2 class="text-sm font-semibold text-slate-800">이슈 목록</h2>
-      <p class="text-xs text-slate-500">총 {{ totalCount }}건</p>
+      <div class="flex items-center gap-2">
+        <p class="text-xs text-slate-500">총 {{ totalCount }}건</p>
+        <AddBtn />
+      </div>
     </header>
 
     <p v-if="errorMessage" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -27,7 +46,7 @@ const onRowClick = (row) => {
     </p>
 
     <DataTable
-      :columns="tableColumns"
+      :columns="tableColumnsWithActions"
       :rows="tableRows"
       row-key="issue_id"
       :loading="loading"
@@ -35,6 +54,13 @@ const onRowClick = (row) => {
       sortable
       clickable-rows
       @row-click="onRowClick"
-    />
+    >
+      <template #cell-__actions="{ row }">
+        <div class="flex items-center justify-center gap-2">
+          <EditBtn :issue-id="row.issue_id" />
+          <DeleteBtn :issue-id="row.issue_id" />
+        </div>
+      </template>
+    </DataTable>
   </section>
 </template>

@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { issueApi } from '@/lib/api'
+import { issueService } from '@/services/issueService'
 
 export const useIssueDetailStore = defineStore('issueDetail', () => {
   const issueId = ref(null)
@@ -15,7 +15,7 @@ export const useIssueDetailStore = defineStore('issueDetail', () => {
     errorMessage.value = ''
 
     try {
-      const { data } = await issueApi.getDetail(targetIssueId)
+      const data = await issueService.getDetail(targetIssueId)
       issueId.value = Number(data?.issue_id || targetIssueId)
       fields.value = Array.isArray(data?.fields) ? data.fields : []
       images.value = Array.isArray(data?.images) ? data.images : []

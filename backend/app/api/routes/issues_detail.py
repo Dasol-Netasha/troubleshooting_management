@@ -4,6 +4,7 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -34,6 +35,10 @@ OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
     "status": (Status, "status_id", "status_name"),
     "priority": (Priority, "priority_id", "priority_name"),
 }
+
+
+class IssueMutationPayload(BaseModel):
+    values: dict[str, Any] = Field(default_factory=dict)
 
 
 def _fetch_option_rows(db: Session, source_name: str) -> dict[str, str]:
@@ -119,6 +124,119 @@ def _field_config_to_dict(row: IssueFieldConfig) -> dict[str, Any]:
     }
 
 
+def _serialize_value(value: Any) -> Any:
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    return value
+
+
+def _is_required_issue_field(field_key: str) -> bool:
+    column = Issue.__table__.columns.get(field_key)
+    if column is None:
+        return False
+
+    if field_key in {"issue_id", "created_at", "updated_at"}:
+        return False
+
+    return bool(column.nullable is False and column.default is None and column.server_default is None)
+
+
+def _get_editable_fields(field_config: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    editable: list[dict[str, Any]] = []
+    for field in sorted(
+        field_config,
+        key=lambda item: (_to_int(item.get("detail_order"), 9999), str(item.get("field_key", ""))),
+    ):
+        key = field.get("field_key")
+        if not isinstance(key, str):
+            continue
+        if key in {"issue_id", "created_at", "updated_at"}:
+            continue
+        if key not in Issue.__table__.columns.keys():
+            continue
+        editable.append(field)
+    return editable
+
+
+def _coerce_input_value(input_type: str, value: Any) -> Any:
+    if value is None or value == "":
+        return None
+
+    normalized_type = str(input_type or "text")
+
+    if normalized_type in {"number", "dropdown"}:
+        try:
+            return int(value)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid numeric value: {value}") from exc
+
+    if normalized_type == "boolean":
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"true", "1", "yes", "y"}:
+                return True
+            if lowered in {"false", "0", "no", "n"}:
+                return False
+        if isinstance(value, (int, float)):
+            return bool(value)
+        raise HTTPException(status_code=400, detail=f"Invalid boolean value: {value}")
+
+    if normalized_type == "date":
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            try:
+                return date.fromisoformat(value)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=f"Invalid date value: {value}") from exc
+        raise HTTPException(status_code=400, detail=f"Invalid date value: {value}")
+
+    return str(value)
+
+
+def _build_issue_payload_values(
+    payload_values: dict[str, Any],
+    editable_fields: list[dict[str, Any]],
+    *,
+    is_create: bool,
+) -> dict[str, Any]:
+    editable_map = {
+        str(field.get("field_key")): field
+        for field in editable_fields
+        if isinstance(field.get("field_key"), str)
+    }
+    normalized_values: dict[str, Any] = {}
+
+    for key, raw_value in payload_values.items():
+        field = editable_map.get(str(key))
+        if not field:
+            continue
+
+        input_type = str(field.get("input_type") or "text")
+        normalized_values[str(key)] = _coerce_input_value(input_type, raw_value)
+
+    if "is_long_term" not in normalized_values and is_create:
+        normalized_values["is_long_term"] = False
+
+    required_fields = [
+        str(field.get("field_key"))
+        for field in editable_fields
+        if isinstance(field.get("field_key"), str) and _is_required_issue_field(str(field.get("field_key")))
+    ]
+
+    missing_fields = [
+        key
+        for key in required_fields
+        if key not in normalized_values or normalized_values.get(key) is None
+    ]
+    if missing_fields and is_create:
+        raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing_fields)}")
+
+    return normalized_values
+
+
 @router.get("/{issue_id}")
 def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     target = db.get(Issue, issue_id)
@@ -174,3 +292,100 @@ def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, 
         "fields": fields,
         "images": images,
     }
+
+
+@router.get("/{issue_id}/form")
+def get_issue_form_data(issue_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    target = db.get(Issue, issue_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    field_config_rows = db.execute(select(IssueFieldConfig)).scalars().all()
+    field_config = [_field_config_to_dict(row) for row in field_config_rows]
+    editable_fields = _get_editable_fields(field_config)
+
+    options_map = _build_options_map_from_db(db, field_config)
+
+    fields: list[dict[str, Any]] = []
+    for field in editable_fields:
+        key = str(field.get("field_key"))
+        source = field.get("option_source") if isinstance(field.get("option_source"), str) else None
+        options = options_map.get(source, []) if source else []
+
+        fields.append(
+            {
+                "key": key,
+                "label": field.get("label", key),
+                "input_type": field.get("input_type") or "text",
+                "option_source": source,
+                "detail_order": field.get("detail_order"),
+                "required": _is_required_issue_field(key),
+                "value": _serialize_value(getattr(target, key)),
+                "options": options,
+            }
+        )
+
+    return {
+        "issue_id": issue_id,
+        "fields": fields,
+        "options_map": options_map,
+    }
+
+
+@router.post("")
+def create_issue(payload: IssueMutationPayload, db: Session = Depends(get_db)) -> dict[str, Any]:
+    field_config_rows = db.execute(select(IssueFieldConfig)).scalars().all()
+    field_config = [_field_config_to_dict(row) for row in field_config_rows]
+    editable_fields = _get_editable_fields(field_config)
+
+    values = _build_issue_payload_values(payload.values, editable_fields, is_create=True)
+
+    issue = Issue(**values)
+    db.add(issue)
+    db.commit()
+    db.refresh(issue)
+
+    return {
+        "issue_id": issue.issue_id,
+    }
+
+
+@router.put("/{issue_id}")
+def update_issue(issue_id: int, payload: IssueMutationPayload, db: Session = Depends(get_db)) -> dict[str, Any]:
+    target = db.get(Issue, issue_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    field_config_rows = db.execute(select(IssueFieldConfig)).scalars().all()
+    field_config = [_field_config_to_dict(row) for row in field_config_rows]
+    editable_fields = _get_editable_fields(field_config)
+
+    values = _build_issue_payload_values(payload.values, editable_fields, is_create=False)
+    if not values:
+        return {"issue_id": issue_id}
+
+    for key, value in values.items():
+        setattr(target, key, value)
+
+    db.add(target)
+    db.commit()
+    db.refresh(target)
+
+    return {
+        "issue_id": target.issue_id,
+    }
+
+
+@router.delete("/{issue_id}")
+def delete_issue(issue_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    target = db.get(Issue, issue_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    image_rows = db.execute(select(IssueImage).where(IssueImage.issue_id == issue_id)).scalars().all()
+    for image in image_rows:
+        db.delete(image)
+
+    db.delete(target)
+    db.commit()
+    return {"issue_id": issue_id}
