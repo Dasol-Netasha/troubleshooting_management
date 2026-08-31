@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 
+import LoginPage from '@/views/pages/LoginPage.vue'
 import ListPage from '@/views/pages/ListPage.vue'
 import DetailPage from '@/views/pages/DetailPage.vue'
 import UpdatePage from '@/views/pages/UpdatePage.vue'
@@ -9,19 +11,18 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/list',
+      redirect: '/login',
     },
-    // TODO: 이후 로그인 처리 시 연결
-    // {
-    //   path: '/login',
-    //   name: 'login-page',
-    //   component: LoginPage,
-    //   meta: {
-    //     title: '로그인',
-    //     public: true,
-    //     hideChrome: true,
-    //   },
-    // },
+    {
+      path: '/login',
+      name: 'login-page',
+      component: LoginPage,
+      meta: {
+        title: '로그인',
+        public: true,
+        hideChrome: true,
+      },
+    },
     {
       path: '/list',
       name: 'list-page',
@@ -56,8 +57,18 @@ const router = createRouter({
   ],
 })
 
-// TODO: 로그인 기능 연결 시 이 가드를 다시 활성화
-router.beforeEach(() => {
+router.beforeEach((to) => {
+  const authStore = useAuthStore()
+  const isPublic = to.meta?.public === true
+
+  if (to.path === '/login' && authStore.isAuthenticated) {
+    return '/list'
+  }
+
+  if (!isPublic && !authStore.isAuthenticated) {
+    return '/login'
+  }
+
   return true
 })
 

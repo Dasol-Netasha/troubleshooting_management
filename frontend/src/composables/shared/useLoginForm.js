@@ -10,11 +10,11 @@ export const useLoginForm = ({ redirectTo = '/list' } = {}) => {
   const password = ref('')
   const errorMessage = ref('')
 
-  const handleSubmit = () => {
-    const success = authStore.login(id.value, password.value)
+  const handleSubmit = async () => {
+    const success = await authStore.login(id.value, password.value)
     if (success) {
       errorMessage.value = ''
-      router.push(redirectTo)
+      await router.push(redirectTo)
       return
     }
     errorMessage.value = '아이디 또는 비밀번호가 올바르지 않습니다.'

@@ -64,6 +64,15 @@ class Priority(Base):
     priority_name: Mapped[str] = mapped_column(String(50), nullable=False)
 
 
+class Account(Base):
+    __tablename__ = "account"
+
+    account_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
 class Issue(Base):
     __tablename__ = "issue"
 
@@ -119,6 +128,7 @@ class IssueFieldConfig(Base):
 
 
 __all__ = [
+    "Account",
     "Project",
     "OccurrencePhase",
     "Location",

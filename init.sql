@@ -6,3 +6,10 @@
 
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
+
+CREATE TABLE IF NOT EXISTS account (
+	account_id VARCHAR(100) PRIMARY KEY,
+	password_hash VARCHAR(255) NOT NULL,
+	display_name VARCHAR(100),
+	is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
