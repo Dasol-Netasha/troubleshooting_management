@@ -1,0 +1,4 @@
+[
+  { "priority_id": 1, "priority_name": "중요" },
+  { "priority_id": 2, "priority_name": "일반" }
+]

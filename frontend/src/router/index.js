@@ -1,15 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
-import SectionPlaceholderPage from '@/views/pages/SectionPlaceholderPage.vue'
-import LoginPage from '@/views/pages/LoginPage.vue'
 import { useAuthStore } from '@/stores/authStore'
+
+import LoginPage from '@/views/pages/LoginPage.vue'
+import ListPage from '@/views/pages/ListPage.vue'
+import DetailPage from '@/views/pages/DetailPage.vue'
+import UpdatePage from '@/views/pages/UpdatePage.vue'
+import OptionPage from '@/views/pages/OptionPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
       path: '/',
-      redirect: '/main',
+      redirect: '/login',
     },
     {
       path: '/login',
@@ -22,12 +25,42 @@ const router = createRouter({
       },
     },
     {
-      path: '/main',
-      name: 'main-page',
-      component: SectionPlaceholderPage,
+      path: '/list',
+      name: 'list-page',
+      component: ListPage,
       meta: {
-        title: '메인',
-        description: '메인 화면은 추후 상세 기능을 추가할 예정입니다.',
+        title: '목록',
+      },
+    },
+    {
+      path: '/detail/:issueId',
+      name: 'detail-page',
+      component: DetailPage,
+      meta: {
+        title: '상세',
+      },
+    },
+    {
+      path: '/update',
+      name: 'update-page',
+      component: UpdatePage,
+      meta: {
+        title: '수정',
+      },
+    },
+    {
+      path: '/options',
+      name: 'option-page',
+      component: OptionPage,
+      meta: {
+        title: '옵션',
+      },
+    },
+    {
+      path: '/main',
+      redirect: '/list',
+      meta: {
+        public: true,
       },
     },
   ],
@@ -35,13 +68,14 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const authStore = useAuthStore()
+  const isPublic = to.meta?.public === true
 
-  if (!to.meta.public && !authStore.isAuthenticated) {
-    return { path: '/login' }
+  if (to.path === '/login' && authStore.isAuthenticated) {
+    return '/list'
   }
 
-  if (to.name === 'login-page' && authStore.isAuthenticated) {
-    return { path: '/main' }
+  if (!isPublic && !authStore.isAuthenticated) {
+    return '/login'
   }
 
   return true

@@ -1,0 +1,5 @@
+[
+  { "phase_id": 1, "phase_name": "Part(입고)" },
+  { "phase_id": 2, "phase_name": "제조(조립)" },
+  { "phase_id": 3, "phase_name": "Turn On(출하)" }
+]

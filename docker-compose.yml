@@ -4,9 +4,9 @@ services:
     container_name: base-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-base_db}
-      POSTGRES_USER: ${POSTGRES_USER:-base_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-base_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-trouble-shooting-manage-alpha-db}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-user}
       TZ: ${TZ:-Asia/Seoul}
       POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C.UTF-8"
     ports:
@@ -15,7 +15,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/00_init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-base_user} -d ${POSTGRES_DB:-base_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-trouble-shooting-manage-alpha-db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,16 +27,39 @@ services:
     container_name: base-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-base_user}:${POSTGRES_PASSWORD:-base_pass}@db:5432/${POSTGRES_DB:-base_db}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-user}@db:5432/${POSTGRES_DB:-trouble-shooting-manage-alpha-db}
       API_HOST: 0.0.0.0
       API_PORT: 8000
       API_RELOAD: "false"
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-issue-images}
+      MINIO_SECURE: "false"
+      MINIO_PUBLIC_BASE_URL: http://localhost:${MINIO_API_PORT:-9000}
       TZ: ${TZ:-Asia/Seoul}
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_started
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+
+  minio:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
+    container_name: base-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      TZ: ${TZ:-Asia/Seoul}
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
 
   frontend:
     build:
@@ -53,3 +76,4 @@ services:
 
 volumes:
   postgres_data:
+  minio_data:

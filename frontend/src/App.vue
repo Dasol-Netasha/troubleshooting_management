@@ -23,7 +23,7 @@ const handleLogout = () => {
 }
 
 const handleOptions = () => {
-  // TODO: 프로젝트별 옵션 화면을 연결하세요.
+  router.push('/options')
 }
 
 const onGlobalKeydown = (event) => {

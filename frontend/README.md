@@ -29,4 +29,4 @@ npm run dev
 
 환경 변수:
 
-- `VITE_API_BASE_URL`: 백엔드 API 기본 주소, 기본값은 `http://localhost:8000/api/v1`
+- `VITE_API_BASE_URL`: 백엔드 API 기본 주소, 기본값은 `/api` (Vite dev proxy 사용)

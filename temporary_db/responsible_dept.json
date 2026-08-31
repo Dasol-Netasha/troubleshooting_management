@@ -1,0 +1,7 @@
+[
+  { "dept_id": 1, "dept_name": "설계" },
+  { "dept_id": 2, "dept_name": "제어" },
+  { "dept_id": 3, "dept_name": "비전" },
+  { "dept_id": 4, "dept_name": "선행개발" },
+  { "dept_id": 5, "dept_name": "연구소" }
+]
