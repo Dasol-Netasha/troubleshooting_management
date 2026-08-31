@@ -21,18 +21,37 @@ export const issueService = {
     return data
   },
 
-  async createIssue(values) {
-    const { data } = await apiClient.post('/issues', { values })
+  async createIssue(values, images = []) {
+    const formData = new FormData()
+    formData.append('values_json', JSON.stringify(values || {}))
+
+    for (const image of images || []) {
+      formData.append('images', image)
+    }
+
+    const { data } = await apiClient.post('/issues', formData)
     return data
   },
 
-  async updateIssue(issueId, values) {
-    const { data } = await apiClient.put(`/issues/${issueId}`, { values })
+  async updateIssue(issueId, values, images = []) {
+    const formData = new FormData()
+    formData.append('values_json', JSON.stringify(values || {}))
+
+    for (const image of images || []) {
+      formData.append('images', image)
+    }
+
+    const { data } = await apiClient.put(`/issues/${issueId}`, formData)
     return data
   },
 
   async deleteIssue(issueId) {
     const { data } = await apiClient.delete(`/issues/${issueId}`)
+    return data
+  },
+
+  async approveIssue(issueId, payload = {}) {
+    const { data } = await apiClient.post(`/issues/${issueId}/approve`, payload)
     return data
   },
 }

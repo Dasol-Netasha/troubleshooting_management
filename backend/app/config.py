@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8000
     api_reload: bool = True
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+    minio_bucket: str = "issue-images"
+    minio_secure: bool = False
+    minio_public_base_url: str = "http://localhost:9000"
 
 
 settings = Settings()

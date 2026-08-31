@@ -55,6 +55,17 @@ const onRowClick = (row) => {
       clickable-rows
       @row-click="onRowClick"
     >
+      <template #cell-approval_yn="{ value }">
+        <span
+          class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
+          :style="value === '승인완료'
+            ? 'background: var(--theme-primary-bg); color: var(--theme-primary-text);'
+            : 'background: var(--theme-danger-bg); color: var(--theme-danger-text);'"
+        >
+          {{ value || '미승인' }}
+        </span>
+      </template>
+
       <template #cell-__actions="{ row }">
         <div class="flex items-center justify-center gap-2">
           <EditBtn :issue-id="row.issue_id" />

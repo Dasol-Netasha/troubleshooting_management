@@ -1,10 +1,10 @@
 ﻿from __future__ import annotations
 
+import json
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ from app.models import (
     Status,
     TechDept,
 )
+from app.services.minio_storage import get_minio_storage
 
 router = APIRouter(prefix="/issues", tags=["issues"])
 
@@ -35,10 +36,6 @@ OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
     "status": (Status, "status_id", "status_name"),
     "priority": (Priority, "priority_id", "priority_name"),
 }
-
-
-class IssueMutationPayload(BaseModel):
-    values: dict[str, Any] = Field(default_factory=dict)
 
 
 def _fetch_option_rows(db: Session, source_name: str) -> dict[str, str]:
@@ -237,8 +234,21 @@ def _build_issue_payload_values(
     return normalized_values
 
 
+def _parse_values_json(values_json: str) -> dict[str, Any]:
+    try:
+        parsed = json.loads(values_json or "{}")
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="values_json must be valid JSON") from exc
+
+    if not isinstance(parsed, dict):
+        raise HTTPException(status_code=400, detail="values_json must be a JSON object")
+
+    return parsed
+
+
 @router.get("/{issue_id}")
 def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    storage = get_minio_storage()
     target = db.get(Issue, issue_id)
     if target is None:
         raise HTTPException(status_code=404, detail="Issue not found")
@@ -277,6 +287,29 @@ def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, 
             }
         )
 
+    fields.extend(
+        [
+            {
+                "key": "approval_yn",
+                "label": "승인여부",
+                "value": "승인완료" if bool(target.approval_yn) else "미승인",
+                "detail_order": 1000,
+            },
+            {
+                "key": "approved_by",
+                "label": "승인자",
+                "value": target.approved_by or "-",
+                "detail_order": 1001,
+            },
+            {
+                "key": "approved_message",
+                "label": "승인메세지",
+                "value": target.approved_message or "-",
+                "detail_order": 1002,
+            },
+        ]
+    )
+
     image_rows = db.execute(select(IssueImage).where(IssueImage.issue_id == issue_id)).scalars().all()
     images: list[dict[str, Any]] = []
     for image in image_rows:
@@ -284,6 +317,7 @@ def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, 
             {
                 "image_id": image.image_id,
                 "image_path": image.image_path,
+                "image_url": storage.build_public_url(image.image_path),
             }
         )
 
@@ -333,17 +367,31 @@ def get_issue_form_data(issue_id: int, db: Session = Depends(get_db)) -> dict[st
 
 
 @router.post("")
-def create_issue(payload: IssueMutationPayload, db: Session = Depends(get_db)) -> dict[str, Any]:
+def create_issue(
+    values_json: str = Form("{}"),
+    images: list[UploadFile] = File(default_factory=list),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    storage = get_minio_storage()
+    payload_values = _parse_values_json(values_json)
+
     field_config_rows = db.execute(select(IssueFieldConfig)).scalars().all()
     field_config = [_field_config_to_dict(row) for row in field_config_rows]
     editable_fields = _get_editable_fields(field_config)
 
-    values = _build_issue_payload_values(payload.values, editable_fields, is_create=True)
+    values = _build_issue_payload_values(payload_values, editable_fields, is_create=True)
 
     issue = Issue(**values)
     db.add(issue)
     db.commit()
     db.refresh(issue)
+
+    for image_file in images:
+        object_key = storage.upload_issue_image(issue.issue_id, image_file)
+        db.add(IssueImage(issue_id=issue.issue_id, image_path=object_key))
+
+    if images:
+        db.commit()
 
     return {
         "issue_id": issue.issue_id,
@@ -351,7 +399,15 @@ def create_issue(payload: IssueMutationPayload, db: Session = Depends(get_db)) -
 
 
 @router.put("/{issue_id}")
-def update_issue(issue_id: int, payload: IssueMutationPayload, db: Session = Depends(get_db)) -> dict[str, Any]:
+def update_issue(
+    issue_id: int,
+    values_json: str = Form("{}"),
+    images: list[UploadFile] = File(default_factory=list),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    storage = get_minio_storage()
+    payload_values = _parse_values_json(values_json)
+
     target = db.get(Issue, issue_id)
     if target is None:
         raise HTTPException(status_code=404, detail="Issue not found")
@@ -360,9 +416,7 @@ def update_issue(issue_id: int, payload: IssueMutationPayload, db: Session = Dep
     field_config = [_field_config_to_dict(row) for row in field_config_rows]
     editable_fields = _get_editable_fields(field_config)
 
-    values = _build_issue_payload_values(payload.values, editable_fields, is_create=False)
-    if not values:
-        return {"issue_id": issue_id}
+    values = _build_issue_payload_values(payload_values, editable_fields, is_create=False)
 
     for key, value in values.items():
         setattr(target, key, value)
@@ -371,19 +425,58 @@ def update_issue(issue_id: int, payload: IssueMutationPayload, db: Session = Dep
     db.commit()
     db.refresh(target)
 
+    for image_file in images:
+        object_key = storage.upload_issue_image(issue_id, image_file)
+        db.add(IssueImage(issue_id=issue_id, image_path=object_key))
+
+    if images:
+        db.commit()
+
     return {
         "issue_id": target.issue_id,
     }
 
 
+@router.post("/{issue_id}/approve")
+def approve_issue(
+    issue_id: int,
+    payload: dict[str, Any],
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    target = db.get(Issue, issue_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    approved_by = str(payload.get("approved_by", "") or "").strip()
+    approved_message = str(payload.get("approved_message", "") or "").strip()
+    if not approved_by:
+        raise HTTPException(status_code=400, detail="approved_by is required")
+
+    target.approval_yn = True
+    target.approved_by = approved_by
+    target.approved_message = approved_message or None
+    db.add(target)
+    db.commit()
+    db.refresh(target)
+
+    return {
+        "issue_id": target.issue_id,
+        "approval_yn": target.approval_yn,
+        "approved_by": target.approved_by,
+        "approved_message": target.approved_message,
+    }
+
+
 @router.delete("/{issue_id}")
 def delete_issue(issue_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    storage = get_minio_storage()
     target = db.get(Issue, issue_id)
     if target is None:
         raise HTTPException(status_code=404, detail="Issue not found")
 
     image_rows = db.execute(select(IssueImage).where(IssueImage.issue_id == issue_id)).scalars().all()
     for image in image_rows:
+        storage.remove_object(image.image_path)
         db.delete(image)
 
     db.delete(target)

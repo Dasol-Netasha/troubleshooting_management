@@ -56,6 +56,10 @@ CREATE TABLE priority (
 CREATE TABLE issue (
   issue_id                  SERIAL PRIMARY KEY,
   project_id                INTEGER REFERENCES project(project_id),
+  author                    VARCHAR(100) NOT NULL DEFAULT '관리자',
+  approval_yn               BOOLEAN NOT NULL DEFAULT FALSE,
+  approved_by               VARCHAR(100),
+  approved_message          TEXT,
   issue_description         TEXT NOT NULL,
   occurred_date              DATE NOT NULL,
   phase_id                  INTEGER REFERENCES occurrence_phase(phase_id),

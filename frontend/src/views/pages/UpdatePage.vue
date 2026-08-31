@@ -15,11 +15,13 @@ const {
   errorMessage,
   fields,
   values,
+  attachedImages,
   targetIssueId,
   isEditMode,
   pageTitle,
   pageDescription,
   setFieldValue,
+  setAttachedImages,
   save,
 } = useIssueForm()
 
@@ -33,6 +35,10 @@ const onSave = async () => {
 
 const onUpdateField = (fieldKey, value) => {
   setFieldValue(fieldKey, value)
+}
+
+const onUpdateImages = (nextImages) => {
+  setAttachedImages(nextImages)
 }
 </script>
 
@@ -54,7 +60,7 @@ const onUpdateField = (fieldKey, value) => {
 
         <InputTemplate :fields="fields" :values="values" @update-field="onUpdateField" />
 
-        <AddImagesTmplate />
+        <AddImagesTmplate :model-value="attachedImages" @update:model-value="onUpdateImages" />
         
         <div class="flex items-center gap-2 pt-2">
           <Button size="sm" variant="secondary" :disabled="saving" @click="goToList">취소</Button>

@@ -1,10 +1,19 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 import Button from '@/components/atoms/Button.vue'
 import FileInput from '@/components/atoms/FileInput.vue'
 
-const selectedFiles = ref([])
+const props = defineProps({
+  modelValue: {
+    type: Array,
+    default: () => [],
+  },
+})
+
+const emit = defineEmits(['update:modelValue'])
+
+const selectedFiles = computed(() => (Array.isArray(props.modelValue) ? props.modelValue : []))
 
 const imageAccept = 'image/png,image/jpeg,image/webp,image/gif'
 
@@ -33,15 +42,15 @@ const onPickFile = (file) => {
     return
   }
 
-  selectedFiles.value = [...selectedFiles.value, file]
+  emit('update:modelValue', [...selectedFiles.value, file])
 }
 
 const removeFileAt = (index) => {
-  selectedFiles.value = selectedFiles.value.filter((_, idx) => idx !== index)
+  emit('update:modelValue', selectedFiles.value.filter((_, idx) => idx !== index))
 }
 
 const clearFiles = () => {
-  selectedFiles.value = []
+  emit('update:modelValue', [])
 }
 </script>
 

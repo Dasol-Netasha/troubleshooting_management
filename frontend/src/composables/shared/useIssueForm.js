@@ -71,6 +71,7 @@ export const useIssueForm = () => {
   const errorMessage = ref('')
   const fields = ref([])
   const values = ref({})
+  const attachedImages = ref([])
 
   const targetIssueId = computed(() => {
     const raw = route.query?.issueId
@@ -125,6 +126,7 @@ export const useIssueForm = () => {
           sourceValues[field.key] = field.value
         }
         initializeValues(nextFields, sourceValues)
+        attachedImages.value = []
         return
       }
 
@@ -132,6 +134,7 @@ export const useIssueForm = () => {
       const nextFields = normalizeFields(data?.fields)
       fields.value = nextFields
       initializeValues(nextFields)
+      attachedImages.value = []
     } catch (error) {
       fields.value = []
       values.value = {}
@@ -154,9 +157,9 @@ export const useIssueForm = () => {
 
       let result
       if (isEditMode.value) {
-        result = await issueService.updateIssue(targetIssueId.value, payload)
+        result = await issueService.updateIssue(targetIssueId.value, payload, attachedImages.value)
       } else {
-        result = await issueService.createIssue(payload)
+        result = await issueService.createIssue(payload, attachedImages.value)
       }
 
       const createdOrUpdatedId = Number(result?.issue_id || targetIssueId.value)
@@ -174,6 +177,10 @@ export const useIssueForm = () => {
     }
   }
 
+  const setAttachedImages = (images) => {
+    attachedImages.value = Array.isArray(images) ? images : []
+  }
+
   watch(
     () => route.query.issueId,
     () => {
@@ -188,11 +195,13 @@ export const useIssueForm = () => {
     errorMessage,
     fields,
     values,
+    attachedImages,
     targetIssueId,
     isEditMode,
     pageTitle,
     pageDescription,
     setFieldValue,
+    setAttachedImages,
     load,
     save,
   }

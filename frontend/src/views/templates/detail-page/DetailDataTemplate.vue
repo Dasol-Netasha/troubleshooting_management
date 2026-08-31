@@ -1,9 +1,56 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
+import Button from '@/components/atoms/Button.vue'
+import ApprovalModalTemplate from '@/views/templates/detail-page/ApprovalModalTemplate.vue'
 import { useIssueDetailPage } from '@/composables/shared/useIssueDetailPage'
+import { useIssueDetailStore } from '@/stores/issueDetailStore'
 
-const { loading, errorMessage, detailFields } = useIssueDetailPage()
+const { issueId, loading, errorMessage, detailFields } = useIssueDetailPage()
+const issueDetailStore = useIssueDetailStore()
+
+const isApprovalModalOpen = ref(false)
+const approverName = ref('')
+const approvalMessage = ref('')
+
+const approvalStatus = computed(() => {
+  const fields = detailFields.value || []
+  const approvalValue = fields.find((field) => field.key === 'approval_yn')?.value
+  const approvedBy = fields.find((field) => field.key === 'approved_by')?.value
+  const approvedMessage = fields.find((field) => field.key === 'approved_message')?.value
+
+  return {
+    approved: String(approvalValue ?? '').includes('승인') || approvalValue === true,
+    approvedBy: approvedBy && approvedBy !== '-' ? String(approvedBy) : '-',
+    approvedMessage: approvedMessage && approvedMessage !== '-' ? String(approvedMessage) : '-',
+  }
+})
+
+const openApprovalModal = () => {
+  approverName.value = ''
+  approvalMessage.value = ''
+  isApprovalModalOpen.value = true
+}
+
+const closeApprovalModal = () => {
+  isApprovalModalOpen.value = false
+  approverName.value = ''
+  approvalMessage.value = ''
+}
+
+const submitApproval = async () => {
+  const trimmedName = approverName.value.trim()
+  if (!trimmedName) {
+    return
+  }
+
+  await issueDetailStore.approveIssue(issueId.value, {
+    approved_by: trimmedName,
+    approved_message: approvalMessage.value.trim(),
+  })
+
+  closeApprovalModal()
+}
 
 const normalizedFields = computed(() => {
   return (detailFields.value || [])
@@ -121,6 +168,35 @@ const spanCardClass = (rowSpan) => {
       <p v-if="loading" class="px-4 py-3 text-sm text-slate-500">로딩 중...</p>
 
       <div v-else class="space-y-3">
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Approval</p>
+            <p class="mt-1 text-sm text-slate-700">
+              {{ approvalStatus.approved ? '승인 완료' : '미승인 상태' }}
+            </p>
+          </div>
+
+          <div v-if="approvalStatus.approved" class="flex flex-col items-end gap-1 text-right">
+            <span class="text-sm font-medium text-slate-700">승인자: {{ approvalStatus.approvedBy }}</span>
+            <span class="text-sm text-slate-600">메세지: {{ approvalStatus.approvedMessage }}</span>
+          </div>
+
+          <Button v-else variant="primary" size="sm" @click="openApprovalModal">
+            승인하기
+          </Button>
+        </div>
+
+        <ApprovalModalTemplate
+          :open="isApprovalModalOpen"
+          :approver-name="approverName"
+          :approval-message="approvalMessage"
+          :submit-disabled="!approverName.trim()"
+          @close="closeApprovalModal"
+          @update:approver-name="approverName = $event"
+          @update:approval-message="approvalMessage = $event"
+          @submit="submitApproval"
+        />
+
         <div
           v-for="(section, sectionIndex) in detailLayoutSections"
           :key="`detail-layout-${sectionIndex}`"

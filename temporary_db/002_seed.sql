@@ -43,8 +43,8 @@ INSERT INTO priority (priority_id, priority_name) VALUES (1, '중요');
 INSERT INTO priority (priority_id, priority_name) VALUES (2, '일반');
 
 -- issue
-INSERT INTO issue (issue_id, project_id, issue_description, occurred_date, phase_id, location_id, root_cause, responsible_dept_id, tech_dept_id, production_tech_owner_id, status_id, temp_action, is_long_term, priority_id, completed_date, root_countermeasure, purchase_request_no, object_insert) VALUES (1, 1, '비전 카메라 초점 불량으로 검사 이미지 흐림 발생', '2026-03-10', 2, 1, '렌즈 마운트 나사 풀림', 3, 3, 1, 3, '렌즈 마운트 재조립 및 초점 재조정', FALSE, 1, NULL, NULL, NULL, NULL);
-INSERT INTO issue (issue_id, project_id, issue_description, occurred_date, phase_id, location_id, root_cause, responsible_dept_id, tech_dept_id, production_tech_owner_id, status_id, temp_action, is_long_term, priority_id, completed_date, root_countermeasure, purchase_request_no, object_insert) VALUES (2, 2, '고객사 Site 출하 검사 중 조명 밝기 불균일', '2026-04-02', 3, 2, '조명 드라이버 노후화로 출력 저하', 1, 2, 2, 5, '조명 드라이버 임시 교체', TRUE, 2, '2026-04-15', '조명 드라이버 정기 교체 주기 수립', 'PR-2026-0142', NULL);
+INSERT INTO issue (issue_id, project_id, author, approval_yn, approved_by, approved_message, issue_description, occurred_date, phase_id, location_id, root_cause, responsible_dept_id, tech_dept_id, production_tech_owner_id, status_id, temp_action, is_long_term, priority_id, completed_date, root_countermeasure, purchase_request_no, object_insert) VALUES (1, 1, '홍길동', TRUE, '관리자', '검토 완료', '비전 카메라 초점 불량으로 검사 이미지 흐림 발생', '2026-03-10', 2, 1, '렌즈 마운트 나사 풀림', 3, 3, 1, 3, '렌즈 마운트 재조립 및 초점 재조정', FALSE, 1, NULL, NULL, NULL, NULL);
+INSERT INTO issue (issue_id, project_id, author, approval_yn, approved_by, approved_message, issue_description, occurred_date, phase_id, location_id, root_cause, responsible_dept_id, tech_dept_id, production_tech_owner_id, status_id, temp_action, is_long_term, priority_id, completed_date, root_countermeasure, purchase_request_no, object_insert) VALUES (2, 2, '김철수', FALSE, NULL, NULL, '고객사 Site 출하 검사 중 조명 밝기 불균일', '2026-04-02', 3, 2, '조명 드라이버 노후화로 출력 저하', 1, 2, 2, 5, '조명 드라이버 임시 교체', TRUE, 2, '2026-04-15', '조명 드라이버 정기 교체 주기 수립', 'PR-2026-0142', NULL);
 
 -- issue_image
 INSERT INTO issue_image (image_id, issue_id, image_path) VALUES (1, 1, '/uploads/issue_1/photo_1.jpg');
@@ -52,16 +52,18 @@ INSERT INTO issue_image (image_id, issue_id, image_path) VALUES (2, 1, '/uploads
 INSERT INTO issue_image (image_id, issue_id, image_path) VALUES (3, 2, '/uploads/issue_2/photo_1.jpg');
 
 -- issue_field_config
-INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('project_id', '프로젝트명', FALSE, NULL, 1, 'dropdown', 'project');
-INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('occurred_date', '발생일자', TRUE, 5, 2, 'date', NULL);
-INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('phase_id', '발생시점', FALSE, NULL, 3, 'dropdown', 'occurrence_phase');
-INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('location_id', '발생위치', FALSE, NULL, 4, 'dropdown', 'location');
-INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('issue_description', '이슈내용', TRUE, 1, 5, 'textarea', NULL);
+INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('author', '작성자', TRUE, 0, 1, 'text', NULL);
+INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('project_id', '프로젝트명', FALSE, NULL, 2, 'dropdown', 'project');
+INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('occurred_date', '발생일자', TRUE, 5, 3, 'date', NULL);
+INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('phase_id', '발생시점', FALSE, NULL, 4, 'dropdown', 'occurrence_phase');
+INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('location_id', '발생위치', FALSE, NULL, 5, 'dropdown', 'location');
+INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('issue_description', '이슈내용', TRUE, 1, 6, 'textarea', NULL);
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('responsible_dept_id', '책임부서', TRUE, 4, 6, 'dropdown', 'responsible_dept');
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('tech_dept_id', '기술부서', FALSE, NULL, 7, 'dropdown', 'tech_dept');
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('production_tech_owner_id', '생산기술담당자', FALSE, NULL, 8, 'dropdown', 'production_tech_owner');
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('status_id', '현재상태', TRUE, 2, 9, 'dropdown', 'status');
-INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('priority_id', '우선순위', TRUE, 3, 10, 'dropdown', 'priority');
+INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('approval_yn', '승인상태', TRUE, 3, 999, 'boolean', NULL);
+INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('priority_id', '우선순위', TRUE, 4, 10, 'dropdown', 'priority');
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('is_long_term', '장기이슈여부', FALSE, NULL, 11, 'boolean', NULL);
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('root_cause', '발생원인', FALSE, NULL, 12, 'textarea', NULL);
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('temp_action', '임시조치내용', FALSE, NULL, 13, 'textarea', NULL);

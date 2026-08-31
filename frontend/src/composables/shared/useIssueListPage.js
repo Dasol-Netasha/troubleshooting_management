@@ -89,6 +89,13 @@ export const useIssueListPage = () => {
       const displayRow = { ...row }
 
       for (const field of listFields.value) {
+        const rawValue = row?.[field.field_key]
+
+        if (field?.input_type === 'boolean') {
+          displayRow[field.field_key] = rawValue === true || rawValue === 'true' || rawValue === 1 ? '승인완료' : '미승인'
+          continue
+        }
+
         const source = field?.option_source
         if (!source) {
           continue
@@ -99,7 +106,6 @@ export const useIssueListPage = () => {
           continue
         }
 
-        const rawValue = row?.[field.field_key]
         const resolved = optionMap.get(String(rawValue))
         displayRow[field.field_key] = resolved ?? rawValue
       }

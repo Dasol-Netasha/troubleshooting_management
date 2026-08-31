@@ -11,7 +11,7 @@ const { images, loading } = storeToRefs(issueDetailStore)
 const imageItems = computed(() => {
   return images.value.map((item) => ({
     imageId: item?.image_id,
-    imagePath: logoBlue,
+    imagePath: item?.image_url || item?.image_path || logoBlue,
   }))
 })
 </script>
