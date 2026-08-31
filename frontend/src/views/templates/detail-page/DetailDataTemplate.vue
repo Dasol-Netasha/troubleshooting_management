@@ -19,8 +19,17 @@ const approvalStatus = computed(() => {
   const approvedBy = fields.find((field) => field.key === 'approved_by')?.value
   const approvedMessage = fields.find((field) => field.key === 'approved_message')?.value
 
+  const normalizedApproval = (() => {
+    if (approvalValue === true) {
+      return true
+    }
+
+    const text = String(approvalValue ?? '').trim().toLowerCase()
+    return text === 'yes' || text === 'true' || text === '승인완료' || text === 'approved'
+  })()
+
   return {
-    approved: String(approvalValue ?? '').includes('승인') || approvalValue === true,
+    approved: normalizedApproval,
     approvedBy: approvedBy && approvedBy !== '-' ? String(approvedBy) : '-',
     approvedMessage: approvedMessage && approvedMessage !== '-' ? String(approvedMessage) : '-',
   }
@@ -28,7 +37,7 @@ const approvalStatus = computed(() => {
 
 const openApprovalModal = () => {
   approverName.value = ''
-  approvalMessage.value = ''
+  approvalMessage.value = '승인완료'
   isApprovalModalOpen.value = true
 }
 
@@ -40,13 +49,14 @@ const closeApprovalModal = () => {
 
 const submitApproval = async () => {
   const trimmedName = approverName.value.trim()
-  if (!trimmedName) {
+  const trimmedMessage = approvalMessage.value.trim()
+  if (!trimmedName || !trimmedMessage) {
     return
   }
 
   await issueDetailStore.approveIssue(issueId.value, {
     approved_by: trimmedName,
-    approved_message: approvalMessage.value.trim(),
+    approved_message: trimmedMessage,
   })
 
   closeApprovalModal()
@@ -190,7 +200,7 @@ const spanCardClass = (rowSpan) => {
           :open="isApprovalModalOpen"
           :approver-name="approverName"
           :approval-message="approvalMessage"
-          :submit-disabled="!approverName.trim()"
+          :submit-disabled="!approverName.trim() || !approvalMessage.trim()"
           @close="closeApprovalModal"
           @update:approver-name="approverName = $event"
           @update:approval-message="approvalMessage = $event"

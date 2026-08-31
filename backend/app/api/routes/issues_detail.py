@@ -272,6 +272,9 @@ def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, 
         if key not in Issue.__table__.columns.keys():
             continue
 
+        if key in {"approval_yn", "approved_by", "approved_message"}:
+            continue
+
         raw_value = getattr(target, key)
         meta = field_config_map.get(key, {})
         option_source = meta.get("option_source") if isinstance(meta.get("option_source"), str) else None
@@ -451,10 +454,12 @@ def approve_issue(
     approved_message = str(payload.get("approved_message", "") or "").strip()
     if not approved_by:
         raise HTTPException(status_code=400, detail="approved_by is required")
+    if not approved_message:
+        approved_message = "승인완료"
 
     target.approval_yn = True
     target.approved_by = approved_by
-    target.approved_message = approved_message or None
+    target.approved_message = approved_message
     db.add(target)
     db.commit()
     db.refresh(target)

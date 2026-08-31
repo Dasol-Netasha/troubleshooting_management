@@ -92,7 +92,8 @@ export const useIssueListPage = () => {
         const rawValue = row?.[field.field_key]
 
         if (field?.input_type === 'boolean') {
-          displayRow[field.field_key] = rawValue === true || rawValue === 'true' || rawValue === 1 ? '승인완료' : '미승인'
+          const normalizedBoolean = rawValue === true || rawValue === 'true' || rawValue === 'True' || rawValue === 'YES' || rawValue === 'Yes' || rawValue === 1
+          displayRow[field.field_key] = normalizedBoolean ? '승인완료' : '미승인'
           continue
         }
 
