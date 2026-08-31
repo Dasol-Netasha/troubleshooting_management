@@ -23,6 +23,8 @@ from app.models import (
 
 router = APIRouter(prefix="/issues", tags=["issues"])
 
+HIDDEN_FORM_FIELDS = {"approval_yn", "approved_by", "approved_message"}
+
 OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
     "project": (Project, "project_id", "project_name"),
     "occurrence_phase": (OccurrencePhase, "phase_id", "phase_name"),
@@ -113,6 +115,32 @@ def _normalize_text(value: Any) -> str:
     return str(value or "").strip().lower()
 
 
+def _to_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, (int, float)):
+        if value == 1:
+            return True
+        if value == 0:
+            return False
+        return None
+
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"", "all", "null", "none"}:
+            return None
+        if text in {"true", "1", "yes", "y", "t", "승인", "승인완료"}:
+            return True
+        if text in {"false", "0", "no", "n", "f", "미승인"}:
+            return False
+
+    return None
+
+
 def _match_value(issue_value: Any, filter_value: Any, input_type: str) -> bool:
     if filter_value is None:
         return True
@@ -124,7 +152,15 @@ def _match_value(issue_value: Any, filter_value: Any, input_type: str) -> bool:
         return _normalize_text(filter_value) in _normalize_text(issue_value)
 
     if input_type == "boolean":
-        return bool(issue_value) is bool(filter_value)
+        normalized_filter = _to_bool(filter_value)
+        if normalized_filter is None:
+            return True
+
+        normalized_issue = _to_bool(issue_value)
+        if normalized_issue is None:
+            normalized_issue = bool(issue_value)
+
+        return normalized_issue is normalized_filter
 
     if input_type in {"number", "dropdown"}:
         return str(issue_value) == str(filter_value)
@@ -213,6 +249,9 @@ def get_issue_form_config(db: Session = Depends(get_db)) -> dict[str, Any]:
     for field in field_config:
         field_key = field.get("field_key")
         if not isinstance(field_key, str):
+            continue
+
+        if field_key in HIDDEN_FORM_FIELDS:
             continue
 
         if field_key not in Issue.__table__.columns.keys():

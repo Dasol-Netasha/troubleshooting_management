@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { issueService } from '@/services/issueService'
 
 const ORDER_FALLBACK = 9999
+const HIDDEN_FORM_FIELDS = new Set(['approval_yn', 'approved_by', 'approved_message'])
 
 const normalizeSortOrder = (value) => {
   const parsed = Number(value)
@@ -12,7 +13,7 @@ const normalizeSortOrder = (value) => {
 
 const normalizeFields = (fields) => {
   return [...(fields || [])]
-    .filter((field) => field?.key)
+    .filter((field) => field?.key && !HIDDEN_FORM_FIELDS.has(String(field.key)))
     .sort((a, b) => {
       const left = normalizeSortOrder(a?.detail_order)
       const right = normalizeSortOrder(b?.detail_order)

@@ -29,7 +29,7 @@ const emit = defineEmits(['update:modelValue'])
     <!-- <div class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5"> -->
       <Switch
         :model-value="modelValue === true"
-        @update:model-value="emit('update:modelValue', $event ? true : null)"
+        @update:model-value="emit('update:modelValue', $event ? true : false)"
       />
     <!-- </div> -->
   </div>

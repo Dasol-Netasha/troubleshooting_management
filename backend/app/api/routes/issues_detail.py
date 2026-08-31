@@ -26,6 +26,8 @@ from app.services.minio_storage import get_minio_storage
 
 router = APIRouter(prefix="/issues", tags=["issues"])
 
+HIDDEN_FORM_FIELDS = {"approval_yn", "approved_by", "approved_message"}
+
 OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
     "project": (Project, "project_id", "project_name"),
     "occurrence_phase": (OccurrencePhase, "phase_id", "phase_name"),
@@ -148,6 +150,8 @@ def _get_editable_fields(field_config: list[dict[str, Any]]) -> list[dict[str, A
         if not isinstance(key, str):
             continue
         if key in {"issue_id", "created_at", "updated_at"}:
+            continue
+        if key in HIDDEN_FORM_FIELDS:
             continue
         if key not in Issue.__table__.columns.keys():
             continue

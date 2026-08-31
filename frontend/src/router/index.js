@@ -5,6 +5,7 @@ import LoginPage from '@/views/pages/LoginPage.vue'
 import ListPage from '@/views/pages/ListPage.vue'
 import DetailPage from '@/views/pages/DetailPage.vue'
 import UpdatePage from '@/views/pages/UpdatePage.vue'
+import OptionPage from '@/views/pages/OptionPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -45,6 +46,14 @@ const router = createRouter({
       component: UpdatePage,
       meta: {
         title: '수정',
+      },
+    },
+    {
+      path: '/options',
+      name: 'option-page',
+      component: OptionPage,
+      meta: {
+        title: '옵션',
       },
     },
     {
