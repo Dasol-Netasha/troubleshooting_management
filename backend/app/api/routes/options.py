@@ -21,6 +21,7 @@ from app.models import (
 )
 
 router = APIRouter(prefix="/options", tags=["options"])
+MANAGED_OPTION_INPUT_TYPES = {"dropdown", "multi_dropdown"}
 
 OPTION_TABLE_CONFIG: dict[str, dict[str, Any]] = {
     "project": {
@@ -88,7 +89,7 @@ def _get_dropdown_source_labels(db: Session) -> dict[str, str]:
 
     source_labels: dict[str, str] = {}
     for row in rows:
-        if str(row.input_type or "") != "dropdown":
+        if str(row.input_type or "").strip().lower() not in MANAGED_OPTION_INPUT_TYPES:
             continue
 
         source = str(row.option_source or "").strip()
