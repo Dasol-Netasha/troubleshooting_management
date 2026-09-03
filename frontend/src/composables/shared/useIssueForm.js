@@ -28,6 +28,9 @@ const toModelValue = (field, value) => {
   const inputType = String(field?.input_type || 'text')
 
   if (value === null || value === undefined) {
+    if (inputType === 'multi_dropdown') {
+      return []
+    }
     if (inputType === 'boolean') {
       return false
     }
@@ -38,6 +41,10 @@ const toModelValue = (field, value) => {
     return Boolean(value)
   }
 
+  if (inputType === 'multi_dropdown') {
+    return Array.isArray(value) ? value : []
+  }
+
   return value
 }
 
@@ -45,15 +52,22 @@ const toSubmitValue = (field, value) => {
   const inputType = String(field?.input_type || 'text')
 
   if (value === '' || value === null || value === undefined) {
+    if (inputType === 'multi_dropdown') {
+      return []
+    }
     if (inputType === 'boolean') {
       return false
     }
     return null
   }
 
-  if (inputType === 'number' || inputType === 'dropdown') {
+  if (inputType === 'number' || inputType === 'dropdown' || inputType === 'search') {
     const parsed = Number(value)
     return Number.isNaN(parsed) ? value : parsed
+  }
+
+  if (inputType === 'multi_dropdown') {
+    return Array.isArray(value) ? value.map(Number).filter(Number.isInteger) : []
   }
 
   if (inputType === 'boolean') {
@@ -132,7 +146,7 @@ export const useIssueForm = () => {
       }
 
       const data = await issueService.getFormConfig()
-      const nextFields = normalizeFields(data?.fields)
+      const nextFields = normalizeFields(data?.fields).filter((field) => field.key !== 'completed_date')
       fields.value = nextFields
       initializeValues(nextFields)
       attachedImages.value = []

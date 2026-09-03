@@ -11,6 +11,8 @@ from app.database import get_db
 from app.models import (
     Issue,
     IssueFieldConfig,
+    IssueResponsibleDept,
+    IssueTechDept,
     Location,
     OccurrencePhase,
     Priority,
@@ -24,6 +26,7 @@ from app.models import (
 router = APIRouter(prefix="/issues", tags=["issues"])
 
 HIDDEN_FORM_FIELDS = {"approval_yn", "approved_by", "approved_message"}
+REQUIRED_FORM_FIELDS = {"project_id", "phase_id", "location_id", "author"}
 
 OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
     "project": (Project, "project_id", "project_name"),
@@ -34,6 +37,11 @@ OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
     "production_tech_owner": (ProductionTechOwner, "owner_id", "owner_name"),
     "status": (Status, "status_id", "status_name"),
     "priority": (Priority, "priority_id", "priority_name"),
+}
+
+MULTI_DROPDOWN_CONFIG: dict[str, tuple[type, str]] = {
+    "responsible_dept_id": (IssueResponsibleDept, "dept_id"),
+    "tech_dept_id": (IssueTechDept, "dept_id"),
 }
 
 
@@ -77,6 +85,9 @@ def _coerce_field_config(row: IssueFieldConfig) -> dict[str, Any]:
 
 
 def _is_required_issue_field(field_key: str) -> bool:
+    if field_key in REQUIRED_FORM_FIELDS:
+        return True
+
     column = Issue.__table__.columns.get(field_key)
     if column is None:
         return False
@@ -91,6 +102,22 @@ def _issue_to_dict(issue: Issue) -> dict[str, Any]:
     return {column.name: getattr(issue, column.name) for column in Issue.__table__.columns}
 
 
+def _attach_multi_dropdown_values(db: Session, issues: list[dict[str, Any]]) -> None:
+    issue_ids = [issue["issue_id"] for issue in issues]
+    if not issue_ids:
+        return
+
+    for field_key, (model_type, value_column) in MULTI_DROPDOWN_CONFIG.items():
+        selected_rows = db.execute(
+            select(model_type.issue_id, getattr(model_type, value_column)).where(model_type.issue_id.in_(issue_ids))
+        ).all()
+        values_by_issue = {issue_id: [] for issue_id in issue_ids}
+        for issue_id, value in selected_rows:
+            values_by_issue[issue_id].append(value)
+        for issue in issues:
+            issue[field_key] = values_by_issue[issue["issue_id"]]
+
+
 def _attach_field_options(
     fields: list[dict[str, Any]],
     options_map: dict[str, list[dict[str, Any]]],
@@ -101,7 +128,7 @@ def _attach_field_options(
         source = field.get("option_source")
         next_field = dict(field)
 
-        if field.get("input_type") == "dropdown" and isinstance(source, str) and source:
+        if field.get("input_type") in {"dropdown", "multi_dropdown"} and isinstance(source, str) and source:
             next_field["options"] = options_map.get(source, [])
         else:
             next_field["options"] = []
@@ -165,6 +192,9 @@ def _match_value(issue_value: Any, filter_value: Any, input_type: str) -> bool:
     if input_type in {"number", "dropdown"}:
         return str(issue_value) == str(filter_value)
 
+    if input_type == "multi_dropdown":
+        return str(filter_value) in {str(value) for value in issue_value or []}
+
     if input_type == "date":
         return str(issue_value or "") == str(filter_value)
 
@@ -212,6 +242,7 @@ def get_issue_list_page_data(
 
     issue_rows = db.execute(select(Issue).order_by(Issue.issue_id)).scalars().all()
     issues = [_issue_to_dict(issue) for issue in issue_rows]
+    _attach_multi_dropdown_values(db, issues)
 
     list_fields = _sort_list_fields(field_config)
     options_map = _build_options_map_from_db(db, field_config)
@@ -254,7 +285,10 @@ def get_issue_form_config(db: Session = Depends(get_db)) -> dict[str, Any]:
         if field_key in HIDDEN_FORM_FIELDS:
             continue
 
-        if field_key not in Issue.__table__.columns.keys():
+        if field_key == "completed_date":
+            continue
+
+        if field_key not in Issue.__table__.columns.keys() and field_key not in MULTI_DROPDOWN_CONFIG:
             continue
 
         source = field.get("option_source")

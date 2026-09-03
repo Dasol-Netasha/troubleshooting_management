@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import BackNavIconBtn from '@/components/molecules/buttons/BackNavIconBtn.vue'
@@ -6,8 +7,10 @@ import Button from '@/components/atoms/Button.vue'
 import { useIssueForm } from '@/composables/shared/useIssueForm'
 import InputTemplate from '@/views/templates/update-page/InputTemplate.vue'
 import AddImagesTmplate from '@/views/templates/update-page/AddImagesTmplate.vue'
+import SearchModalTemplate from '@/views/templates/update-page/SearchModalTemplate.vue'
 
 const router = useRouter()
+const searchField = ref(null)
 
 const {
   loading,
@@ -40,6 +43,20 @@ const onUpdateField = (fieldKey, value) => {
 const onUpdateImages = (nextImages) => {
   setAttachedImages(nextImages)
 }
+
+const openSearch = (field) => {
+  searchField.value = field
+}
+
+const closeSearch = () => {
+  searchField.value = null
+}
+
+const selectSearchValue = (value) => {
+  if (searchField.value?.key) {
+    setFieldValue(searchField.value.key, value)
+  }
+}
 </script>
 
 <template>
@@ -58,7 +75,7 @@ const onUpdateImages = (nextImages) => {
 
       <div v-else class="space-y-3">
 
-        <InputTemplate :fields="fields" :values="values" @update-field="onUpdateField" />
+        <InputTemplate :fields="fields" :values="values" @update-field="onUpdateField" @open-search="openSearch" />
 
         <AddImagesTmplate :model-value="attachedImages" @update:model-value="onUpdateImages" />
         
@@ -68,6 +85,13 @@ const onUpdateImages = (nextImages) => {
         </div>
       </div>
     </section>
+
+    <SearchModalTemplate
+      :open="searchField !== null"
+      :field="searchField"
+      @close="closeSearch"
+      @select="selectSearchValue"
+    />
 
   </section>
 </template>

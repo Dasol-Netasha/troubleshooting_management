@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import BooleanInputField from '@/components/molecules/inputs/BooleanInputField.vue'
 import DateInputField from '@/components/molecules/inputs/DateInputField.vue'
 import DropdownInputField from '@/components/molecules/inputs/DropdownInputField.vue'
+import MultiDropdownInputField from '@/components/molecules/inputs/MultiDropdownInputField.vue'
 import NumberInputField from '@/components/molecules/inputs/NumberInputField.vue'
 import TextInputField from '@/components/molecules/inputs/TextInputField.vue'
 
@@ -17,7 +18,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update-field'])
+const emit = defineEmits(['update-field', 'open-search'])
 
 const sortedFields = computed(() => {
   return [...(props.fields || [])].sort((a, b) => {
@@ -30,9 +31,14 @@ const sortedFields = computed(() => {
   })
 })
 
+const normalizeInputType = (inputType) => String(inputType || 'text').trim().toLowerCase()
+
 const resolveInputComponent = (inputType) => {
   if (inputType === 'dropdown') {
     return DropdownInputField
+  }
+  if (inputType === 'multi_dropdown') {
+    return MultiDropdownInputField
   }
   if (inputType === 'number') {
     return NumberInputField
@@ -49,6 +55,16 @@ const resolveInputComponent = (inputType) => {
 const getOptions = (field) => {
   return Array.isArray(field?.options) ? field.options : []
 }
+
+const getDisplayValue = (field) => {
+  const value = props.values[field.key]
+  if (normalizeInputType(field.input_type) !== 'search') {
+    return value
+  }
+
+  const selectedOption = getOptions(field).find((option) => String(option?.value) === String(value))
+  return selectedOption?.label ?? value
+}
 </script>
 
 <template>
@@ -59,10 +75,12 @@ const getOptions = (field) => {
       :key="field.key"
       :label="field.label"
       :required="field.required === true"
-      :model-value="values[field.key]"
-      :options="field.input_type === 'dropdown' ? getOptions(field) : undefined"
-      :placeholder="field.input_type === 'dropdown' ? '선택' : undefined"
+      :model-value="getDisplayValue(field)"
+      :options="['dropdown', 'multi_dropdown', 'search'].includes(normalizeInputType(field.input_type)) ? getOptions(field) : undefined"
+      :placeholder="normalizeInputType(field.input_type) === 'dropdown' ? '선택' : normalizeInputType(field.input_type) === 'search' ? '클릭하여 검색' : undefined"
+      :readonly="normalizeInputType(field.input_type) === 'search'"
       @update:model-value="emit('update-field', field.key, $event)"
+      @open="normalizeInputType(field.input_type) === 'search' && emit('open-search', field)"
     />
   </section>
 </template>

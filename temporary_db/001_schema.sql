@@ -65,8 +65,6 @@ CREATE TABLE issue (
   phase_id                  INTEGER REFERENCES occurrence_phase(phase_id),
   location_id               INTEGER REFERENCES location(location_id),
   root_cause                 TEXT,
-  responsible_dept_id       INTEGER REFERENCES responsible_dept(dept_id),
-  tech_dept_id               INTEGER REFERENCES tech_dept(dept_id),
   production_tech_owner_id  INTEGER REFERENCES production_tech_owner(owner_id),
   status_id                 INTEGER NOT NULL REFERENCES status(status_id),
   temp_action                 TEXT,
@@ -90,6 +88,18 @@ CREATE TABLE issue_image (
   image_path VARCHAR(500) NOT NULL
 );
 
+CREATE TABLE issue_responsible_dept (
+  issue_id INTEGER NOT NULL REFERENCES issue(issue_id) ON DELETE CASCADE,
+  dept_id  INTEGER NOT NULL REFERENCES responsible_dept(dept_id),
+  PRIMARY KEY (issue_id, dept_id)
+);
+
+CREATE TABLE issue_tech_dept (
+  issue_id INTEGER NOT NULL REFERENCES issue(issue_id) ON DELETE CASCADE,
+  dept_id  INTEGER NOT NULL REFERENCES tech_dept(dept_id),
+  PRIMARY KEY (issue_id, dept_id)
+);
+
 -- ---------------------------------------------------------------------
 -- 4. 필드 메타데이터 테이블 (목록/상세 화면 노출 및 입력 타입 제어)
 -- ---------------------------------------------------------------------
@@ -110,7 +120,6 @@ CREATE TABLE issue_field_config (
 
 CREATE INDEX idx_issue_status_id ON issue(status_id);
 CREATE INDEX idx_issue_priority_id ON issue(priority_id);
-CREATE INDEX idx_issue_responsible_dept_id ON issue(responsible_dept_id);
 CREATE INDEX idx_issue_project_id ON issue(project_id);
 CREATE INDEX idx_issue_occurred_date ON issue(occurred_date);
 CREATE INDEX idx_issue_image_issue_id ON issue_image(issue_id);

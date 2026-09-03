@@ -21,10 +21,14 @@ const props = defineProps({
   required: {
     type: Boolean,
     default: false
+  },
+  readonly: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'open'])
 const parsedLabel = computed(() => parseBilingualLabel(props.label))
 </script>
 
@@ -39,7 +43,9 @@ const parsedLabel = computed(() => parseBilingualLabel(props.label))
       type="text"
       :placeholder="placeholder || `${parsedLabel.display} 입력`"
       size="sm"
+      :readonly="readonly"
       @update:model-value="emit('update:modelValue', $event)"
+      @click="readonly && emit('open')"
     />
   </div>
 </template>
