@@ -5,7 +5,7 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -13,6 +13,8 @@ from app.models import (
     Issue,
     IssueFieldConfig,
     IssueImage,
+    IssueResponsibleDept,
+    IssueTechDept,
     Location,
     OccurrencePhase,
     Priority,
@@ -27,6 +29,7 @@ from app.services.minio_storage import get_minio_storage
 router = APIRouter(prefix="/issues", tags=["issues"])
 
 HIDDEN_FORM_FIELDS = {"approval_yn", "approved_by", "approved_message"}
+REQUIRED_FORM_FIELDS = {"project_id", "phase_id", "location_id", "author"}
 
 OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
     "project": (Project, "project_id", "project_name"),
@@ -37,6 +40,11 @@ OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
     "production_tech_owner": (ProductionTechOwner, "owner_id", "owner_name"),
     "status": (Status, "status_id", "status_name"),
     "priority": (Priority, "priority_id", "priority_name"),
+}
+
+MULTI_DROPDOWN_CONFIG: dict[str, tuple[type, str]] = {
+    "responsible_dept_id": (IssueResponsibleDept, "dept_id"),
+    "tech_dept_id": (IssueTechDept, "dept_id"),
 }
 
 
@@ -129,7 +137,33 @@ def _serialize_value(value: Any) -> Any:
     return value
 
 
+def _get_multi_dropdown_values(db: Session, issue_id: int) -> dict[str, list[int]]:
+    values: dict[str, list[int]] = {}
+    for field_key, (model_type, value_column) in MULTI_DROPDOWN_CONFIG.items():
+        rows = db.execute(
+            select(getattr(model_type, value_column))
+            .where(model_type.issue_id == issue_id)
+            .order_by(getattr(model_type, value_column))
+        ).scalars().all()
+        values[field_key] = list(rows)
+    return values
+
+
+def _replace_multi_dropdown_values(db: Session, issue_id: int, values: dict[str, Any]) -> None:
+    for field_key, selected_values in values.items():
+        config = MULTI_DROPDOWN_CONFIG.get(field_key)
+        if config is None:
+            continue
+        model_type, value_column = config
+        db.execute(delete(model_type).where(model_type.issue_id == issue_id))
+        for value in selected_values:
+            db.add(model_type(issue_id=issue_id, **{value_column: value}))
+
+
 def _is_required_issue_field(field_key: str) -> bool:
+    if field_key in REQUIRED_FORM_FIELDS:
+        return True
+
     column = Issue.__table__.columns.get(field_key)
     if column is None:
         return False
@@ -153,7 +187,7 @@ def _get_editable_fields(field_config: list[dict[str, Any]]) -> list[dict[str, A
             continue
         if key in HIDDEN_FORM_FIELDS:
             continue
-        if key not in Issue.__table__.columns.keys():
+        if key not in Issue.__table__.columns.keys() and key not in MULTI_DROPDOWN_CONFIG:
             continue
         editable.append(field)
     return editable
@@ -163,9 +197,17 @@ def _coerce_input_value(input_type: str, value: Any) -> Any:
     if value is None or value == "":
         return None
 
-    normalized_type = str(input_type or "text")
+    normalized_type = str(input_type or "text").strip().lower()
 
-    if normalized_type in {"number", "dropdown"}:
+    if normalized_type == "multi_dropdown":
+        if not isinstance(value, list):
+            raise HTTPException(status_code=400, detail="Invalid multi-dropdown value")
+        try:
+            return list(dict.fromkeys(int(item) for item in value))
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="Invalid multi-dropdown value") from exc
+
+    if normalized_type in {"number", "dropdown", "search"}:
         try:
             return int(value)
         except (TypeError, ValueError) as exc:
@@ -235,7 +277,12 @@ def _build_issue_payload_values(
     if missing_fields and is_create:
         raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing_fields)}")
 
-    return normalized_values
+    multi_values = {
+        key: normalized_values.pop(key)
+        for key, field in editable_map.items()
+        if str(field.get("input_type") or "").strip().lower() == "multi_dropdown" and key in normalized_values
+    }
+    return normalized_values, multi_values
 
 
 def _parse_values_json(values_json: str) -> dict[str, Any]:
@@ -264,6 +311,7 @@ def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, 
     option_lookup = _build_option_lookup(options_map)
     field_config_map = _build_field_config_map(field_config)
 
+    multi_values = _get_multi_dropdown_values(db, issue_id)
     fields: list[dict[str, Any]] = []
     for config in sorted(
         field_config,
@@ -273,13 +321,13 @@ def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, 
         if not isinstance(key, str):
             continue
 
-        if key not in Issue.__table__.columns.keys():
+        if key not in Issue.__table__.columns.keys() and key not in MULTI_DROPDOWN_CONFIG:
             continue
 
         if key in {"approval_yn", "approved_by", "approved_message"}:
             continue
 
-        raw_value = getattr(target, key)
+        raw_value = multi_values.get(key) if str(config.get("input_type") or "").strip().lower() == "multi_dropdown" else getattr(target, key)
         meta = field_config_map.get(key, {})
         option_source = meta.get("option_source") if isinstance(meta.get("option_source"), str) else None
         input_type = str(meta.get("input_type") or "text")
@@ -289,7 +337,10 @@ def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, 
             {
                 "key": key,
                 "label": meta.get("label", key),
-                "value": _resolve_display_value(raw_value, input_type, option_source, option_lookup),
+                "value": ", ".join(
+                    str(_resolve_display_value(value, input_type, option_source, option_lookup))
+                    for value in raw_value
+                ) if isinstance(raw_value, list) else _resolve_display_value(raw_value, input_type, option_source, option_lookup),
                 "detail_order": detail_order,
             }
         )
@@ -347,6 +398,7 @@ def get_issue_form_data(issue_id: int, db: Session = Depends(get_db)) -> dict[st
 
     options_map = _build_options_map_from_db(db, field_config)
 
+    multi_values = _get_multi_dropdown_values(db, issue_id)
     fields: list[dict[str, Any]] = []
     for field in editable_fields:
         key = str(field.get("field_key"))
@@ -361,7 +413,7 @@ def get_issue_form_data(issue_id: int, db: Session = Depends(get_db)) -> dict[st
                 "option_source": source,
                 "detail_order": field.get("detail_order"),
                 "required": _is_required_issue_field(key),
-                "value": _serialize_value(getattr(target, key)),
+                "value": multi_values.get(key, []) if str(field.get("input_type") or "").strip().lower() == "multi_dropdown" else _serialize_value(getattr(target, key)),
                 "options": options,
             }
         )
@@ -386,12 +438,16 @@ def create_issue(
     field_config = [_field_config_to_dict(row) for row in field_config_rows]
     editable_fields = _get_editable_fields(field_config)
 
-    values = _build_issue_payload_values(payload_values, editable_fields, is_create=True)
+    values, multi_values = _build_issue_payload_values(payload_values, editable_fields, is_create=True)
 
     issue = Issue(**values)
     db.add(issue)
     db.commit()
     db.refresh(issue)
+
+    _replace_multi_dropdown_values(db, issue.issue_id, multi_values)
+    if multi_values:
+        db.commit()
 
     for image_file in images:
         object_key = storage.upload_issue_image(issue.issue_id, image_file)
@@ -423,7 +479,7 @@ def update_issue(
     field_config = [_field_config_to_dict(row) for row in field_config_rows]
     editable_fields = _get_editable_fields(field_config)
 
-    values = _build_issue_payload_values(payload_values, editable_fields, is_create=False)
+    values, multi_values = _build_issue_payload_values(payload_values, editable_fields, is_create=False)
 
     for key, value in values.items():
         setattr(target, key, value)
@@ -431,6 +487,10 @@ def update_issue(
     db.add(target)
     db.commit()
     db.refresh(target)
+
+    _replace_multi_dropdown_values(db, issue_id, multi_values)
+    if multi_values:
+        db.commit()
 
     for image_file in images:
         object_key = storage.upload_issue_image(issue_id, image_file)
