@@ -1,1 +1,46 @@
-data_large.sql
+# 환경변수 / 시크릿
+.env
+.env.*
+!.env.example
+
+# 인증서 / 키
+certs/
+*.pem
+*.key
+*.crt
+
+# Python (backend)
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# Node / Vue (frontend)
+node_modules/
+dist/
+.vite/
+*.local
+
+# Docker
+*.env.docker
+
+# DB / 볼륨 관련 로컬 데이터 (혹시 로컬에 마운트해서 테스트했다면)
+postgres_data/
+minio_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로그
+*.log
