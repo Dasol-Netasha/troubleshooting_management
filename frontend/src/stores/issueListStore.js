@@ -23,7 +23,8 @@ export const useIssueListStore = defineStore('issueList', () => {
       fields.value = Array.isArray(data?.fields) ? data.fields : []
       rows.value = Array.isArray(data?.rows) ? data.rows : []
       optionsMap.value = data?.options_map && typeof data.options_map === 'object' ? data.options_map : {}
-      totalCount.value = Number(data?.total_count || 0)
+      const responseTotal = Number(data?.total_count)
+      totalCount.value = Number.isFinite(responseTotal) ? responseTotal : rows.value.length
       return data
     } catch (error) {
       errorMessage.value = '이슈 목록 데이터를 불러오지 못했습니다.'

@@ -1,13 +1,26 @@
 <script setup>
 import { computed } from 'vue'
 import DataTable from '@/components/organisms/table/DataTable.vue'
+import PaginationBar from '@/components/organisms/pagination/PaginationBar.vue'
 import { useRouter } from 'vue-router'
 import { useIssueListPage } from '@/composables/shared/useIssueListPage'
 import AddBtn from '@/views/organisms/list-page/AddBtn.vue'
 import EditBtn from '@/views/organisms/list-page/EditBtn.vue'
 import DeleteBtn from '@/views/organisms/list-page/DeleteBtn.vue'
 
-const { loading, errorMessage, totalCount, tableColumns, tableRows } = useIssueListPage()
+const {
+  loading,
+  errorMessage,
+  totalCount,
+  tableColumns,
+  pagedTableRows,
+  currentPage,
+  pageSize,
+  totalPages,
+  pageSizeOptions,
+  setCurrentPage,
+  setPageSize,
+} = useIssueListPage()
 const router = useRouter()
 
 const tableColumnsWithActions = computed(() => {
@@ -47,7 +60,7 @@ const onRowClick = (row) => {
 
     <DataTable
       :columns="tableColumnsWithActions"
-      :rows="tableRows"
+      :rows="pagedTableRows"
       row-key="issue_id"
       :loading="loading"
       empty-text="표시할 이슈가 없습니다."
@@ -73,5 +86,17 @@ const onRowClick = (row) => {
         </div>
       </template>
     </DataTable>
+
+    <PaginationBar
+      v-if="totalCount > 0"
+      :page="currentPage"
+      :page-size="pageSize"
+      :total="totalCount"
+      :total-pages="totalPages"
+      :page-size-options="pageSizeOptions"
+      :loading="loading"
+      @update:page="setCurrentPage"
+      @update:page-size="setPageSize"
+    />
   </section>
 </template>
