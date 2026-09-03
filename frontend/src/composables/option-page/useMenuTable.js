@@ -4,7 +4,6 @@ import { optionService } from '@/services/optionService'
 import { useOptionCardContext } from '@/composables/option-page/useOptionCardContext'
 
 const columns = [
-  { key: 'id', label: 'ID', sortable: true },
   { key: 'label', label: '값', sortable: true },
   { key: 'actions', label: '작업', sortable: false },
 ]

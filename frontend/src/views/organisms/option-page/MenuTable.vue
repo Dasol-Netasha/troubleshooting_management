@@ -33,10 +33,6 @@ const {
     :loading="loading"
     empty-text="등록된 옵션이 없습니다."
   >
-    <template #cell-id="{ value }">
-      <span class="text-xs text-slate-500">{{ value }}</span>
-    </template>
-
     <template #cell-label="{ row, value }">
       <div v-if="editingId === Number(row.id)" class="max-w-lg">
         <Input :model-value="editingLabel" @update:model-value="editingLabel = $event" />
