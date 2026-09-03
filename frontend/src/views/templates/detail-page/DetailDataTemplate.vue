@@ -92,25 +92,25 @@ const rowFields = (orders) => orders.map((order) => fieldAt(order))
 // 왼쪽/오른쪽 모두 동일한 형태: 줄(row) 배열, 줄마다 필드 개수(orders)와 높이(rowSpan)를 독립적으로 지정
 const detailLayoutSections = [
   {
-    leftRows: [{ orders: [1], rowSpan: 1 }],
-    rightRows: [{ orders: [2, 3, 4], rowSpan: 1 }],
+    leftRows: [{ orders: [1,2], rowSpan: 1 }],
+    rightRows: [{ orders: [3, 4, 5], rowSpan: 1 }],
   },
   {
-    leftRows: [{ orders: [5], rowSpan: 2 }],
+    leftRows: [{ orders: [6], rowSpan: 2 }],
     rightRows: [
-      { orders: [6, 7, 8], rowSpan: 1 },
-      { orders: [9, 10, 11], rowSpan: 1 },
+      { orders: [7, 8, 9], rowSpan: 1 },
+      { orders: [10, 11, 12], rowSpan: 1 },
     ],
   },
   {
-    leftRows: [{ orders: [12], rowSpan: 2 }],
-    rightRows: [{ orders: [13], rowSpan: 2 }],
+    leftRows: [{ orders: [13], rowSpan: 2 }],
+    rightRows: [{ orders: [14], rowSpan: 2 }],
   },
   {
-    leftRows: [{ orders: [14], rowSpan: 2 }],
+    leftRows: [{ orders: [15], rowSpan: 2 }],
     rightRows: [
-      { orders: [15], rowSpan: 1 },
-      { orders: [16, 17], rowSpan: 1 },
+      { orders: [16], rowSpan: 1 },
+      { orders: [17, 18], rowSpan: 1 },
     ],
   },
 ]
