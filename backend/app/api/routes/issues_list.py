@@ -285,6 +285,9 @@ def get_issue_form_config(db: Session = Depends(get_db)) -> dict[str, Any]:
         if field_key in HIDDEN_FORM_FIELDS:
             continue
 
+        if field_key == "completed_date":
+            continue
+
         if field_key not in Issue.__table__.columns.keys() and field_key not in MULTI_DROPDOWN_CONFIG:
             continue
 

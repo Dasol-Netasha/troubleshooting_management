@@ -16,13 +16,17 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  completedDate: {
+    type: String,
+    default: '',
+  },
   submitDisabled: {
     type: Boolean,
     default: true,
   },
 })
 
-const emit = defineEmits(['close', 'update:approverName', 'update:approvalMessage', 'submit'])
+const emit = defineEmits(['close', 'update:approverName', 'update:approvalMessage', 'update:completedDate', 'submit'])
 
 const dialogTitle = computed(() => '승인 처리')
 </script>
@@ -59,6 +63,16 @@ const dialogTitle = computed(() => '승인 처리')
             class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
             placeholder="승인 코멘트를 입력하세요"
             @input="emit('update:approvalMessage', $event.target.value)"
+          />
+        </label>
+
+        <label class="block">
+          <span class="mb-1 block text-sm font-medium text-slate-700">완료일자</span>
+          <input
+            :value="completedDate"
+            type="date"
+            class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            @input="emit('update:completedDate', $event.target.value)"
           />
         </label>
       </div>

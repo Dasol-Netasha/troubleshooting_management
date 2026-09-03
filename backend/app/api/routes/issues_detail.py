@@ -516,14 +516,23 @@ def approve_issue(
 
     approved_by = str(payload.get("approved_by", "") or "").strip()
     approved_message = str(payload.get("approved_message", "") or "").strip()
+    completed_date_value = payload.get("completed_date")
     if not approved_by:
         raise HTTPException(status_code=400, detail="approved_by is required")
     if not approved_message:
         approved_message = "승인완료"
+    if not isinstance(completed_date_value, str):
+        raise HTTPException(status_code=400, detail="completed_date is required")
+
+    try:
+        completed_date = date.fromisoformat(completed_date_value)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="completed_date must be YYYY-MM-DD") from exc
 
     target.approval_yn = True
     target.approved_by = approved_by
     target.approved_message = approved_message
+    target.completed_date = completed_date
     db.add(target)
     db.commit()
     db.refresh(target)
@@ -533,6 +542,7 @@ def approve_issue(
         "approval_yn": target.approval_yn,
         "approved_by": target.approved_by,
         "approved_message": target.approved_message,
+        "completed_date": _serialize_value(target.completed_date),
     }
 
 

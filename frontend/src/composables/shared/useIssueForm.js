@@ -146,7 +146,7 @@ export const useIssueForm = () => {
       }
 
       const data = await issueService.getFormConfig()
-      const nextFields = normalizeFields(data?.fields)
+      const nextFields = normalizeFields(data?.fields).filter((field) => field.key !== 'completed_date')
       fields.value = nextFields
       initializeValues(nextFields)
       attachedImages.value = []
