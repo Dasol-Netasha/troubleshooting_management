@@ -97,6 +97,13 @@ export const useIssueListPage = () => {
           continue
         }
 
+        if (field?.input_type === 'multi_dropdown') {
+          const optionMap = optionLabelMaps.value[field?.option_source]
+          const values = Array.isArray(rawValue) ? rawValue : []
+          displayRow[field.field_key] = values.map((value) => optionMap?.get(String(value)) ?? value).join(', ')
+          continue
+        }
+
         const source = field?.option_source
         if (!source) {
           continue

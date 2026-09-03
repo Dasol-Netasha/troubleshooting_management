@@ -61,12 +61,11 @@ const clearFiles = () => {
       <p class="text-xs text-slate-500">{{ selectedFiles.length }}개 / {{ totalSizeText }}</p>
     </header>
 
-    <p class="text-xs text-slate-500">등록/수정 저장 API에 이미지 업로드가 연결되면 함께 전송됩니다.</p>
 
     <div class="flex flex-col gap-2 md:flex-row md:items-center">
       <FileInput :accept="imageAccept" size="sm" @change="onPickFile" />
-      <Button size="sm" variant="secondary" :disabled="selectedFiles.length === 0" @click="clearFiles">
-        전체 제거
+      <Button size="md" variant="danger" class="min-w-28" :disabled="selectedFiles.length === 0" @click="clearFiles">
+        전체 삭제
       </Button>
     </div>
 

@@ -87,8 +87,6 @@ class Issue(Base):
     phase_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("occurrence_phase.phase_id"), nullable=True)
     location_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("location.location_id"), nullable=True)
     root_cause: Mapped[str | None] = mapped_column(Text, nullable=True)
-    responsible_dept_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("responsible_dept.dept_id"), nullable=True)
-    tech_dept_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("tech_dept.dept_id"), nullable=True)
     production_tech_owner_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("production_tech_owner.owner_id"), nullable=True)
     status_id: Mapped[int] = mapped_column(Integer, ForeignKey("status.status_id"), nullable=False)
     temp_action: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -115,6 +113,20 @@ class IssueImage(Base):
     image_path: Mapped[str] = mapped_column(String(500), nullable=False)
 
 
+class IssueResponsibleDept(Base):
+    __tablename__ = "issue_responsible_dept"
+
+    issue_id: Mapped[int] = mapped_column(ForeignKey("issue.issue_id", ondelete="CASCADE"), primary_key=True)
+    dept_id: Mapped[int] = mapped_column(ForeignKey("responsible_dept.dept_id"), primary_key=True)
+
+
+class IssueTechDept(Base):
+    __tablename__ = "issue_tech_dept"
+
+    issue_id: Mapped[int] = mapped_column(ForeignKey("issue.issue_id", ondelete="CASCADE"), primary_key=True)
+    dept_id: Mapped[int] = mapped_column(ForeignKey("tech_dept.dept_id"), primary_key=True)
+
+
 class IssueFieldConfig(Base):
     __tablename__ = "issue_field_config"
 
@@ -139,5 +151,7 @@ __all__ = [
     "Priority",
     "Issue",
     "IssueImage",
+    "IssueResponsibleDept",
+    "IssueTechDept",
     "IssueFieldConfig",
 ]
