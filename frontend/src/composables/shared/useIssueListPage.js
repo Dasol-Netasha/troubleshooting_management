@@ -22,6 +22,7 @@ export const useIssueListPage = () => {
   const loading = computed(() => issueListStore.loading)
   const errorMessage = computed(() => issueListStore.errorMessage)
   const totalCount = computed(() => issueListStore.totalCount)
+  const optionsMap = computed(() => issueListStore.optionsMap)
 
   const listFields = computed(() => {
     const visible = issueListStore.fields.filter((field) => field?.show_in_list === true)
@@ -172,7 +173,7 @@ export const useIssueListPage = () => {
     loading,
     errorMessage,
     totalCount,
-    optionsMap: issueListStore.optionsMap,
+    optionsMap,
     filterValues,
     listFields,
     tableColumns,
