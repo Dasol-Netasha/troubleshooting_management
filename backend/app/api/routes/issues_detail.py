@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import (
     Issue,
+    IssueComment,
+    IssueCommentReply,
     IssueFieldConfig,
     IssueImage,
     IssueResponsibleDept,
@@ -307,6 +309,82 @@ def _parse_deleted_image_ids(value: str) -> list[int]:
         return list(dict.fromkeys(int(image_id) for image_id in parsed))
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail="deleted_image_ids_json must contain image IDs") from exc
+
+
+def _serialize_comment(comment: IssueComment, reply: IssueCommentReply | None = None) -> dict[str, Any]:
+    return {
+        "comment_id": comment.comment_id,
+        "author": comment.author,
+        "content": comment.content,
+        "created_at": _serialize_value(comment.created_at),
+        "reply": None if reply is None else {
+            "reply_id": reply.reply_id,
+            "author": reply.author,
+            "content": reply.content,
+            "created_at": _serialize_value(reply.created_at),
+        },
+    }
+
+
+def _validate_comment_payload(payload: dict[str, Any]) -> tuple[str, str]:
+    author = str(payload.get("author") or "").strip()
+    content = str(payload.get("content") or "").strip()
+    if not author:
+        raise HTTPException(status_code=400, detail="author is required")
+    if not content:
+        raise HTTPException(status_code=400, detail="content is required")
+    return author, content
+
+
+@router.get("/{issue_id}/comments")
+def get_issue_comments(issue_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    if db.get(Issue, issue_id) is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    comments = db.execute(
+        select(IssueComment).where(IssueComment.issue_id == issue_id).order_by(IssueComment.created_at.asc())
+    ).scalars().all()
+    comment_ids = [comment.comment_id for comment in comments]
+    replies = db.execute(
+        select(IssueCommentReply).where(IssueCommentReply.comment_id.in_(comment_ids))
+    ).scalars().all() if comment_ids else []
+    replies_by_comment = {reply.comment_id: reply for reply in replies}
+
+    return {"comments": [_serialize_comment(comment, replies_by_comment.get(comment.comment_id)) for comment in comments]}
+
+
+@router.post("/{issue_id}/comments")
+def create_issue_comment(issue_id: int, payload: dict[str, Any], db: Session = Depends(get_db)) -> dict[str, Any]:
+    if db.get(Issue, issue_id) is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    author, content = _validate_comment_payload(payload)
+    comment = IssueComment(issue_id=issue_id, author=author, content=content)
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return _serialize_comment(comment)
+
+
+@router.post("/{issue_id}/comments/{comment_id}/reply")
+def create_issue_comment_reply(
+    issue_id: int,
+    comment_id: int,
+    payload: dict[str, Any],
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    comment = db.get(IssueComment, comment_id)
+    if comment is None or comment.issue_id != issue_id:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if db.execute(select(IssueCommentReply).where(IssueCommentReply.comment_id == comment_id)).scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Comment already has a reply")
+
+    author, content = _validate_comment_payload(payload)
+    reply = IssueCommentReply(comment_id=comment_id, author=author, content=content)
+    db.add(reply)
+    db.commit()
+    db.refresh(reply)
+    return _serialize_comment(comment, reply)
 
 
 @router.get("/{issue_id}")

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useIssueListStore } from '@/stores/issueListStore'
 
 const TEXT_INPUT_TYPES = new Set(['text', 'textarea'])
+const FILTER_EXCLUDED_FIELDS = new Set(['comment_count'])
 const sharedFilterValues = ref({})
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50]
 
@@ -29,9 +30,11 @@ export const useIssueListPage = () => {
     return sortByListOrder(visible)
   })
 
+  const filterFields = computed(() => listFields.value.filter((field) => !FILTER_EXCLUDED_FIELDS.has(field.field_key)))
+
   const initializeFilters = () => {
     const next = {}
-    for (const field of listFields.value) {
+    for (const field of filterFields.value) {
       next[field.field_key] = ''
     }
     filterValues.value = next
@@ -63,7 +66,7 @@ export const useIssueListPage = () => {
   const normalizedFilters = computed(() => {
     const normalized = {}
 
-    for (const field of listFields.value) {
+    for (const field of filterFields.value) {
       const key = field.field_key
       normalized[key] = coerceFilterValue(field, filterValues.value[key])
     }
@@ -170,6 +173,7 @@ export const useIssueListPage = () => {
     optionsMap,
     filterValues,
     listFields,
+    filterFields,
     tableColumns,
     tableRows,
     pagedTableRows,

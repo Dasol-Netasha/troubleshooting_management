@@ -4,12 +4,14 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import (
     Issue,
+    IssueComment,
+    IssueCommentReply,
     IssueFieldConfig,
     IssueResponsibleDept,
     IssueTechDept,
@@ -117,6 +119,33 @@ def _attach_multi_dropdown_values(db: Session, issues: list[dict[str, Any]]) -> 
             issue[field_key] = values_by_issue[issue["issue_id"]]
 
 
+def _attach_comment_counts(db: Session, issues: list[dict[str, Any]]) -> None:
+    issue_ids = [issue["issue_id"] for issue in issues]
+    if not issue_ids:
+        return
+
+    comment_counts = dict(
+        db.execute(
+            select(IssueComment.issue_id, func.count(IssueComment.comment_id))
+            .where(IssueComment.issue_id.in_(issue_ids))
+            .group_by(IssueComment.issue_id)
+        ).all()
+    )
+    unanswered_counts = dict(
+        db.execute(
+            select(IssueComment.issue_id, func.count(IssueComment.comment_id))
+            .outerjoin(IssueCommentReply, IssueCommentReply.comment_id == IssueComment.comment_id)
+            .where(IssueComment.issue_id.in_(issue_ids), IssueCommentReply.reply_id.is_(None))
+            .group_by(IssueComment.issue_id)
+        ).all()
+    )
+
+    for issue in issues:
+        issue_id = issue["issue_id"]
+        issue["comment_count"] = comment_counts.get(issue_id, 0)
+        issue["unanswered_comment_count"] = unanswered_counts.get(issue_id, 0)
+
+
 def _attach_field_options(
     fields: list[dict[str, Any]],
     options_map: dict[str, list[dict[str, Any]]],
@@ -200,6 +229,19 @@ def _match_value(issue_value: Any, filter_value: Any, input_type: str) -> bool:
     return str(issue_value) == str(filter_value)
 
 
+def _matches_unanswered_comment_filter(issue_value: Any, filter_value: Any) -> bool:
+    normalized_filter = str(filter_value or "").strip().lower()
+    if normalized_filter in {"", "all"}:
+        return True
+
+    has_unanswered_comments = int(issue_value or 0) > 0
+    if normalized_filter in {"has", "있음"}:
+        return has_unanswered_comments
+    if normalized_filter in {"none", "없음"}:
+        return not has_unanswered_comments
+    return True
+
+
 def _apply_filters(
     issues: list[dict[str, Any]],
     fields: list[dict[str, Any]],
@@ -216,6 +258,12 @@ def _apply_filters(
         for key, raw_filter_value in filters.items():
             field = field_meta.get(key)
             if not field:
+                continue
+
+            if key == "unanswered_comment_count":
+                if not _matches_unanswered_comment_filter(issue.get(key), raw_filter_value):
+                    include = False
+                    break
                 continue
 
             input_type = str(field.get("input_type") or "text")
@@ -242,6 +290,7 @@ def get_issue_list_page_data(
     issue_rows = db.execute(select(Issue).order_by(Issue.issue_id)).scalars().all()
     issues = [_issue_to_dict(issue) for issue in issue_rows]
     _attach_multi_dropdown_values(db, issues)
+    _attach_comment_counts(db, issues)
 
     list_fields = _sort_list_fields(field_config)
     options_map = _build_options_map_from_db(db, field_config)
@@ -279,9 +328,6 @@ def get_issue_form_config(db: Session = Depends(get_db)) -> dict[str, Any]:
     for field in field_config:
         field_key = field.get("field_key")
         if not isinstance(field_key, str):
-            continue
-
-        if field_key in HIDDEN_FORM_FIELDS:
             continue
 
         if field_key == "completed_date":

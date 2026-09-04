@@ -50,4 +50,19 @@ export const issueService = {
     const { data } = await apiClient.delete(`/issues/${issueId}`)
     return data
   },
+
+  async getComments(issueId) {
+    const { data } = await apiClient.get(`/issues/${issueId}/comments`)
+    return data
+  },
+
+  async createComment(issueId, payload) {
+    const { data } = await apiClient.post(`/issues/${issueId}/comments`, payload)
+    return data
+  },
+
+  async createCommentReply(issueId, commentId, payload) {
+    const { data } = await apiClient.post(`/issues/${issueId}/comments/${commentId}/reply`, payload)
+    return data
+  },
 }

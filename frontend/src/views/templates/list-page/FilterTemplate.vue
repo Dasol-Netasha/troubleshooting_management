@@ -10,11 +10,11 @@ import TextInputField from '@/components/molecules/inputs/TextInputField.vue'
 import { useIssueListPage } from '@/composables/shared/useIssueListPage'
 import SearchModalTemplate from '@/views/templates/update-page/SearchModalTemplate.vue'
 
-const { loading, optionsMap, filterValues, listFields, setFilterValue, load, resetFilters } = useIssueListPage()
+const { loading, optionsMap, filterValues, filterFields, setFilterValue, load, resetFilters } = useIssueListPage()
 const searchField = ref(null)
 
 const sortedFields = computed(() => {
-  return [...listFields.value].sort((a, b) => Number(a?.list_order ?? 9999) - Number(b?.list_order ?? 9999))
+  return [...filterFields.value].sort((a, b) => Number(a?.list_order ?? 9999) - Number(b?.list_order ?? 9999))
 })
 
 const normalizeInputType = (inputType) => String(inputType || 'text').trim().toLowerCase()
@@ -35,11 +35,22 @@ const resolveInputComponent = (inputType) => {
   return TextInputField
 }
 
+const isUnansweredCommentField = (field) => field?.field_key === 'unanswered_comment_count'
+
+const resolveFieldInputType = (field) => isUnansweredCommentField(field) ? 'dropdown' : normalizeInputType(field.input_type)
+
 const updateFieldValue = (fieldKey, value) => {
   setFilterValue(fieldKey, value)
 }
 
 const getOptions = (field) => {
+  if (isUnansweredCommentField(field)) {
+    return [
+      { value: 'has', label: '있음' },
+      { value: 'none', label: '없음' },
+    ]
+  }
+
   if (Array.isArray(field?.options) && field.options.length > 0) {
     return field.options
   }
@@ -78,7 +89,7 @@ const selectSearchValue = (value) => {
 }
 
 onMounted(async () => {
-  if (listFields.value.length === 0) {
+  if (filterFields.value.length === 0) {
     await load()
   }
 })
@@ -100,16 +111,16 @@ onMounted(async () => {
 
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-5">
       <component
-        :is="resolveInputComponent(field.input_type)"
+        :is="resolveInputComponent(resolveFieldInputType(field))"
         v-for="field in sortedFields"
         :key="field.field_key"
         :label="field.label"
         :model-value="getDisplayValue(field)"
-        :options="normalizeInputType(field.input_type) === 'dropdown' ? getOptions(field) : undefined"
-        :placeholder="normalizeInputType(field.input_type) === 'dropdown' ? '전체' : normalizeInputType(field.input_type) === 'search' ? '클릭하여 검색' : undefined"
-        :readonly="normalizeInputType(field.input_type) === 'search'"
+        :options="resolveFieldInputType(field) === 'dropdown' ? getOptions(field) : undefined"
+        :placeholder="resolveFieldInputType(field) === 'dropdown' ? '전체' : resolveFieldInputType(field) === 'search' ? '클릭하여 검색' : undefined"
+        :readonly="resolveFieldInputType(field) === 'search'"
         @update:model-value="updateFieldValue(field.field_key, $event)"
-        @open="normalizeInputType(field.input_type) === 'search' && openSearch(field)"
+        @open="resolveFieldInputType(field) === 'search' && openSearch(field)"
       />
     </div>
 

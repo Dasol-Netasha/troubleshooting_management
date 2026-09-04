@@ -110,6 +110,26 @@ class IssueImage(Base):
     image_path: Mapped[str] = mapped_column(String(500), nullable=False)
 
 
+class IssueComment(Base):
+    __tablename__ = "issue_comment"
+
+    comment_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    issue_id: Mapped[int] = mapped_column(ForeignKey("issue.issue_id", ondelete="CASCADE"), nullable=False)
+    author: Mapped[str] = mapped_column(String(100), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
+class IssueCommentReply(Base):
+    __tablename__ = "issue_comment_reply"
+
+    reply_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    comment_id: Mapped[int] = mapped_column(ForeignKey("issue_comment.comment_id", ondelete="CASCADE"), nullable=False, unique=True)
+    author: Mapped[str] = mapped_column(String(100), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
 class IssueResponsibleDept(Base):
     __tablename__ = "issue_responsible_dept"
 
@@ -148,6 +168,8 @@ __all__ = [
     "Priority",
     "Issue",
     "IssueImage",
+    "IssueComment",
+    "IssueCommentReply",
     "IssueResponsibleDept",
     "IssueTechDept",
     "IssueFieldConfig",
