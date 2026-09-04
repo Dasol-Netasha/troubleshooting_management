@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import Button from '@/components/atoms/Button.vue'
 import BooleanInputField from '@/components/molecules/inputs/BooleanInputField.vue'
@@ -8,12 +8,16 @@ import DropdownInputField from '@/components/molecules/inputs/DropdownInputField
 import NumberInputField from '@/components/molecules/inputs/NumberInputField.vue'
 import TextInputField from '@/components/molecules/inputs/TextInputField.vue'
 import { useIssueListPage } from '@/composables/shared/useIssueListPage'
+import SearchModalTemplate from '@/views/templates/update-page/SearchModalTemplate.vue'
 
 const { loading, optionsMap, filterValues, listFields, setFilterValue, load, resetFilters } = useIssueListPage()
+const searchField = ref(null)
 
 const sortedFields = computed(() => {
   return [...listFields.value].sort((a, b) => Number(a?.list_order ?? 9999) - Number(b?.list_order ?? 9999))
 })
+
+const normalizeInputType = (inputType) => String(inputType || 'text').trim().toLowerCase()
 
 const resolveInputComponent = (inputType) => {
   if (inputType === 'dropdown') {
@@ -47,6 +51,32 @@ const getOptions = (field) => {
   return optionsMap.value[source] || []
 }
 
+const getDisplayValue = (field) => {
+  const value = filterValues.value?.[field.field_key]
+  if (normalizeInputType(field.input_type) !== 'search') {
+    return value
+  }
+
+  return getOptions(field).find((option) => String(option?.value) === String(value))?.label ?? value
+}
+
+const openSearch = (field) => {
+  searchField.value = {
+    ...field,
+    options: getOptions(field),
+  }
+}
+
+const closeSearch = () => {
+  searchField.value = null
+}
+
+const selectSearchValue = (value) => {
+  if (searchField.value?.field_key) {
+    setFilterValue(searchField.value.field_key, value)
+  }
+}
+
 onMounted(async () => {
   if (listFields.value.length === 0) {
     await load()
@@ -74,11 +104,20 @@ onMounted(async () => {
         v-for="field in sortedFields"
         :key="field.field_key"
         :label="field.label"
-        :model-value="filterValues?.[field.field_key]"
-        :options="field.input_type === 'dropdown' ? getOptions(field) : undefined"
-        :placeholder="field.input_type === 'dropdown' ? '전체' : undefined"
+        :model-value="getDisplayValue(field)"
+        :options="normalizeInputType(field.input_type) === 'dropdown' ? getOptions(field) : undefined"
+        :placeholder="normalizeInputType(field.input_type) === 'dropdown' ? '전체' : normalizeInputType(field.input_type) === 'search' ? '클릭하여 검색' : undefined"
+        :readonly="normalizeInputType(field.input_type) === 'search'"
         @update:model-value="updateFieldValue(field.field_key, $event)"
+        @open="normalizeInputType(field.input_type) === 'search' && openSearch(field)"
       />
     </div>
+
+    <SearchModalTemplate
+      :open="searchField !== null"
+      :field="searchField"
+      @close="closeSearch"
+      @select="selectSearchValue"
+    />
   </section>
 </template>
