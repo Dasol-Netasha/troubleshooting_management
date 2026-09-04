@@ -2,6 +2,7 @@
 import { useRoute, useRouter } from 'vue-router'
 import DetailDataTemplate from '@/views/templates/detail-page/DetailDataTemplate.vue'
 import DetailDataImagesTEmplate from '@/views/templates/detail-page/DetailDataImagesTEmplate.vue'
+import CommentTemplate from '@/views/templates/detail-page/CommentTemplate.vue'
 import BackNavIconBtn from '@/components/molecules/buttons/BackNavIconBtn.vue'
 import EditBtn from '@/views/organisms/list-page/EditBtn.vue'
 
@@ -23,5 +24,6 @@ const goToList = () => {
 
     <DetailDataTemplate />
     <DetailDataImagesTEmplate />
+    <CommentTemplate :issue-id="route.params.issueId" />
   </section>
 </template>
