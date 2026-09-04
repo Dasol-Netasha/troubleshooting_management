@@ -72,12 +72,14 @@ const clearFiles = () => {
     <ul v-if="selectedFiles.length > 0" class="space-y-2">
       <li
         v-for="(file, index) in selectedFiles"
-        :key="`${file.name}-${file.lastModified}-${index}`"
+        :key="file.image_id || `${file.name}-${file.lastModified}-${index}`"
         class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
       >
         <div class="min-w-0">
-          <p class="truncate text-sm text-slate-700">{{ file.name }}</p>
-          <p class="text-xs text-slate-500">{{ (file.size / 1024).toFixed(1) }} KB</p>
+          <img v-if="file.image_url" :src="file.image_url" alt="첨부 이미지" class="mb-2 h-24 w-32 rounded border border-slate-200 object-cover" />
+          <p class="truncate text-sm text-slate-700">{{ file.name || file.image_path }}</p>
+          <p v-if="file.size" class="text-xs text-slate-500">{{ (file.size / 1024).toFixed(1) }} KB</p>
+          <p v-else class="text-xs text-slate-500">등록된 이미지</p>
         </div>
         <Button size="sm" variant="danger" outlined @click="removeFileAt(index)">삭제</Button>
       </li>

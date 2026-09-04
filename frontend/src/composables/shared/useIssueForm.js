@@ -87,6 +87,7 @@ export const useIssueForm = () => {
   const fields = ref([])
   const values = ref({})
   const attachedImages = ref([])
+  const existingImageIds = ref([])
 
   const targetIssueId = computed(() => {
     const raw = route.query?.issueId
@@ -141,7 +142,8 @@ export const useIssueForm = () => {
           sourceValues[field.key] = field.value
         }
         initializeValues(nextFields, sourceValues)
-        attachedImages.value = []
+        attachedImages.value = Array.isArray(data?.images) ? data.images : []
+        existingImageIds.value = attachedImages.value.map((image) => Number(image?.image_id)).filter(Number.isInteger)
         return
       }
 
@@ -150,6 +152,7 @@ export const useIssueForm = () => {
       fields.value = nextFields
       initializeValues(nextFields)
       attachedImages.value = []
+      existingImageIds.value = []
     } catch (error) {
       fields.value = []
       values.value = {}
@@ -172,7 +175,12 @@ export const useIssueForm = () => {
 
       let result
       if (isEditMode.value) {
-        result = await issueService.updateIssue(targetIssueId.value, payload, attachedImages.value)
+        const retainedImageIds = new Set(
+          attachedImages.value.map((image) => Number(image?.image_id)).filter(Number.isInteger)
+        )
+        const deletedImageIds = existingImageIds.value.filter((imageId) => !retainedImageIds.has(imageId))
+        const newImages = attachedImages.value.filter((image) => !Number.isInteger(Number(image?.image_id)))
+        result = await issueService.updateIssue(targetIssueId.value, payload, newImages, deletedImageIds)
       } else {
         result = await issueService.createIssue(payload, attachedImages.value)
       }

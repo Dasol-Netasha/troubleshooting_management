@@ -33,9 +33,10 @@ export const issueService = {
     return data
   },
 
-  async updateIssue(issueId, values, images = []) {
+  async updateIssue(issueId, values, images = [], deletedImageIds = []) {
     const formData = new FormData()
     formData.append('values_json', JSON.stringify(values || {}))
+    formData.append('deleted_image_ids_json', JSON.stringify(deletedImageIds || []))
 
     for (const image of images || []) {
       formData.append('images', image)

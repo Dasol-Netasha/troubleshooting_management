@@ -297,6 +297,21 @@ def _parse_values_json(values_json: str) -> dict[str, Any]:
     return parsed
 
 
+def _parse_deleted_image_ids(value: str) -> list[int]:
+    try:
+        parsed = json.loads(value or "[]")
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="deleted_image_ids_json must be valid JSON") from exc
+
+    if not isinstance(parsed, list):
+        raise HTTPException(status_code=400, detail="deleted_image_ids_json must be a JSON array")
+
+    try:
+        return list(dict.fromkeys(int(image_id) for image_id in parsed))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="deleted_image_ids_json must contain image IDs") from exc
+
+
 @router.get("/{issue_id}")
 def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     storage = get_minio_storage()
@@ -388,6 +403,7 @@ def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, 
 
 @router.get("/{issue_id}/form")
 def get_issue_form_data(issue_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    storage = get_minio_storage()
     target = db.get(Issue, issue_id)
     if target is None:
         raise HTTPException(status_code=404, detail="Issue not found")
@@ -418,10 +434,20 @@ def get_issue_form_data(issue_id: int, db: Session = Depends(get_db)) -> dict[st
             }
         )
 
+    image_rows = db.execute(select(IssueImage).where(IssueImage.issue_id == issue_id)).scalars().all()
+
     return {
         "issue_id": issue_id,
         "fields": fields,
         "options_map": options_map,
+        "images": [
+            {
+                "image_id": image.image_id,
+                "image_path": image.image_path,
+                "image_url": storage.build_public_url(image.image_path),
+            }
+            for image in image_rows
+        ],
     }
 
 
@@ -465,11 +491,13 @@ def create_issue(
 def update_issue(
     issue_id: int,
     values_json: str = Form("{}"),
+    deleted_image_ids_json: str = Form("[]"),
     images: list[UploadFile] = File(default_factory=list),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     storage = get_minio_storage()
     payload_values = _parse_values_json(values_json)
+    deleted_image_ids = _parse_deleted_image_ids(deleted_image_ids_json)
 
     target = db.get(Issue, issue_id)
     if target is None:
@@ -490,6 +518,15 @@ def update_issue(
 
     _replace_multi_dropdown_values(db, issue_id, multi_values)
     if multi_values:
+        db.commit()
+
+    if deleted_image_ids:
+        image_rows = db.execute(
+            select(IssueImage).where(IssueImage.issue_id == issue_id, IssueImage.image_id.in_(deleted_image_ids))
+        ).scalars().all()
+        for image in image_rows:
+            storage.remove_object(image.image_path)
+            db.delete(image)
         db.commit()
 
     for image_file in images:
