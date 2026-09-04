@@ -28,7 +28,6 @@ from app.services.minio_storage import get_minio_storage
 
 router = APIRouter(prefix="/issues", tags=["issues"])
 
-HIDDEN_FORM_FIELDS = {"approval_yn", "approved_by", "approved_message"}
 REQUIRED_FORM_FIELDS = {"project_id", "phase_id", "location_id", "author"}
 
 OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
@@ -185,8 +184,6 @@ def _get_editable_fields(field_config: list[dict[str, Any]]) -> list[dict[str, A
             continue
         if key in {"issue_id", "created_at", "updated_at"}:
             continue
-        if key in HIDDEN_FORM_FIELDS:
-            continue
         if key not in Issue.__table__.columns.keys() and key not in MULTI_DROPDOWN_CONFIG:
             continue
         editable.append(field)
@@ -339,9 +336,6 @@ def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, 
         if key not in Issue.__table__.columns.keys() and key not in MULTI_DROPDOWN_CONFIG:
             continue
 
-        if key in {"approval_yn", "approved_by", "approved_message"}:
-            continue
-
         raw_value = multi_values.get(key) if str(config.get("input_type") or "").strip().lower() == "multi_dropdown" else getattr(target, key)
         meta = field_config_map.get(key, {})
         option_source = meta.get("option_source") if isinstance(meta.get("option_source"), str) else None
@@ -359,29 +353,6 @@ def get_issue_detail(issue_id: int, db: Session = Depends(get_db)) -> dict[str, 
                 "detail_order": detail_order,
             }
         )
-
-    fields.extend(
-        [
-            {
-                "key": "approval_yn",
-                "label": "승인여부",
-                "value": "승인완료" if bool(target.approval_yn) else "미승인",
-                "detail_order": 1000,
-            },
-            {
-                "key": "approved_by",
-                "label": "승인자",
-                "value": target.approved_by or "-",
-                "detail_order": 1001,
-            },
-            {
-                "key": "approved_message",
-                "label": "승인메세지",
-                "value": target.approved_message or "-",
-                "detail_order": 1002,
-            },
-        ]
-    )
 
     image_rows = db.execute(select(IssueImage).where(IssueImage.issue_id == issue_id)).scalars().all()
     images: list[dict[str, Any]] = []
@@ -538,48 +509,6 @@ def update_issue(
 
     return {
         "issue_id": target.issue_id,
-    }
-
-
-@router.post("/{issue_id}/approve")
-def approve_issue(
-    issue_id: int,
-    payload: dict[str, Any],
-    db: Session = Depends(get_db),
-) -> dict[str, Any]:
-    target = db.get(Issue, issue_id)
-    if target is None:
-        raise HTTPException(status_code=404, detail="Issue not found")
-
-    approved_by = str(payload.get("approved_by", "") or "").strip()
-    approved_message = str(payload.get("approved_message", "") or "").strip()
-    completed_date_value = payload.get("completed_date")
-    if not approved_by:
-        raise HTTPException(status_code=400, detail="approved_by is required")
-    if not approved_message:
-        approved_message = "승인완료"
-    if not isinstance(completed_date_value, str):
-        raise HTTPException(status_code=400, detail="completed_date is required")
-
-    try:
-        completed_date = date.fromisoformat(completed_date_value)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="completed_date must be YYYY-MM-DD") from exc
-
-    target.approval_yn = True
-    target.approved_by = approved_by
-    target.approved_message = approved_message
-    target.completed_date = completed_date
-    db.add(target)
-    db.commit()
-    db.refresh(target)
-
-    return {
-        "issue_id": target.issue_id,
-        "approval_yn": target.approval_yn,
-        "approved_by": target.approved_by,
-        "approved_message": target.approved_message,
-        "completed_date": _serialize_value(target.completed_date),
     }
 
 

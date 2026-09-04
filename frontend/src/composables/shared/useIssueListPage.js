@@ -98,12 +98,6 @@ export const useIssueListPage = () => {
       for (const field of listFields.value) {
         const rawValue = row?.[field.field_key]
 
-        if (field?.input_type === 'boolean') {
-          const normalizedBoolean = rawValue === true || rawValue === 'true' || rawValue === 'True' || rawValue === 'YES' || rawValue === 'Yes' || rawValue === 1
-          displayRow[field.field_key] = normalizedBoolean ? '승인완료' : '미승인'
-          continue
-        }
-
         if (field?.input_type === 'multi_dropdown') {
           const optionMap = optionLabelMaps.value[field?.option_source]
           const values = Array.isArray(rawValue) ? rawValue : []

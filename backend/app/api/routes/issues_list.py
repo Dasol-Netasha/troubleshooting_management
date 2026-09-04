@@ -25,7 +25,6 @@ from app.models import (
 
 router = APIRouter(prefix="/issues", tags=["issues"])
 
-HIDDEN_FORM_FIELDS = {"approval_yn", "approved_by", "approved_message"}
 REQUIRED_FORM_FIELDS = {"project_id", "phase_id", "location_id", "author"}
 
 OPTION_SOURCE_CONFIG: dict[str, tuple[type, str, str]] = {
@@ -160,9 +159,9 @@ def _to_bool(value: Any) -> bool | None:
         text = value.strip().lower()
         if text in {"", "all", "null", "none"}:
             return None
-        if text in {"true", "1", "yes", "y", "t", "승인", "승인완료"}:
+        if text in {"true", "1", "yes", "y", "t"}:
             return True
-        if text in {"false", "0", "no", "n", "f", "미승인"}:
+        if text in {"false", "0", "no", "n", "f"}:
             return False
 
     return None

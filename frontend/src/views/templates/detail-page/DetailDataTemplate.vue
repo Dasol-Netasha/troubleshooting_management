@@ -1,83 +1,13 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
-import Button from '@/components/atoms/Button.vue'
-import ApprovalModalTemplate from '@/views/templates/detail-page/ApprovalModalTemplate.vue'
 import { useIssueDetailPage } from '@/composables/shared/useIssueDetailPage'
-import { useIssueDetailStore } from '@/stores/issueDetailStore'
 
 const { issueId, loading, errorMessage, detailFields } = useIssueDetailPage()
-const issueDetailStore = useIssueDetailStore()
-
-const isApprovalModalOpen = ref(false)
-const approverName = ref('')
-const approvalMessage = ref('')
-const completedDate = ref('')
-
-const approvalStatus = computed(() => {
-  const fields = detailFields.value || []
-  const approvalValue = fields.find((field) => field.key === 'approval_yn')?.value
-  const approvedBy = fields.find((field) => field.key === 'approved_by')?.value
-  const approvedMessage = fields.find((field) => field.key === 'approved_message')?.value
-  const completionDate = fields.find((field) => field.key === 'completed_date')?.value
-
-  const normalizedApproval = (() => {
-    if (approvalValue === true) {
-      return true
-    }
-
-    const text = String(approvalValue ?? '').trim().toLowerCase()
-    return text === 'yes' || text === 'true' || text === '승인완료' || text === 'approved'
-  })()
-
-  return {
-    approved: normalizedApproval,
-    approvedBy: approvedBy && approvedBy !== '-' ? String(approvedBy) : '-',
-    approvedMessage: approvedMessage && approvedMessage !== '-' ? String(approvedMessage) : '-',
-    completedDate: completionDate && completionDate !== '-' ? String(completionDate) : '-',
-  }
-})
-
-const approvalDetailFields = computed(() => [
-  { key: 'approval-status', label: '승인여부', value: approvalStatus.value.approved ? '승인완료' : '미승인' },
-  { key: 'approved-by', label: '승인자', value: approvalStatus.value.approvedBy },
-  { key: 'completed-date', label: '승인일자', value: approvalStatus.value.completedDate },
-])
-
-const openApprovalModal = () => {
-  approverName.value = ''
-  approvalMessage.value = '승인완료'
-  completedDate.value = new Date().toISOString().slice(0, 10)
-  isApprovalModalOpen.value = true
-}
-
-const closeApprovalModal = () => {
-  isApprovalModalOpen.value = false
-  approverName.value = ''
-  approvalMessage.value = ''
-  completedDate.value = ''
-}
-
-const submitApproval = async () => {
-  const trimmedName = approverName.value.trim()
-  const trimmedMessage = approvalMessage.value.trim()
-  if (!trimmedName || !trimmedMessage || !completedDate.value) {
-    return
-  }
-
-  await issueDetailStore.approveIssue(issueId.value, {
-    approved_by: trimmedName,
-    approved_message: trimmedMessage,
-    completed_date: completedDate.value,
-  })
-
-  closeApprovalModal()
-}
 
 const normalizedFields = computed(() => {
   return (detailFields.value || [])
     .filter((item) => item?.key && item.key !== 'issue_id')
-    .filter((item) => item.key !== 'completed_date')
     .map((item) => ({
       key: item.key,
       label: item.label || item.key,
@@ -191,42 +121,6 @@ const spanCardClass = (rowSpan) => {
       <p v-if="loading" class="px-4 py-3 text-sm text-slate-500">로딩 중...</p>
 
       <div v-else class="space-y-3">
-        <div class="flex justify-end">
-          <Button v-if="!approvalStatus.approved" variant="primary" size="sm" @click="openApprovalModal">
-            승인하기
-          </Button>
-        </div>
-
-        <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div
-              v-for="field in approvalDetailFields"
-              :key="field.key"
-              class="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 md:min-h-[104px]"
-            >
-              <p class="text-md pb-2 font-medium text-slate-500">{{ field.label }}</p>
-              <p class="text-xl whitespace-pre-wrap text-slate-800">{{ field.value }}</p>
-            </div>
-          </div>
-          <div class="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 md:min-h-[104px]">
-            <p class="text-md pb-2 font-medium text-slate-500">승인메세지</p>
-            <p class="text-xl whitespace-pre-wrap text-slate-800">{{ approvalStatus.approvedMessage }}</p>
-          </div>
-        </div>
-
-        <ApprovalModalTemplate
-          :open="isApprovalModalOpen"
-          :approver-name="approverName"
-          :approval-message="approvalMessage"
-          :completed-date="completedDate"
-          :submit-disabled="!approverName.trim() || !approvalMessage.trim() || !completedDate"
-          @close="closeApprovalModal"
-          @update:approver-name="approverName = $event"
-          @update:approval-message="approvalMessage = $event"
-          @update:completed-date="completedDate = $event"
-          @submit="submitApproval"
-        />
-
         <div
           v-for="(section, sectionIndex) in detailLayoutSections"
           :key="`detail-layout-${sectionIndex}`"

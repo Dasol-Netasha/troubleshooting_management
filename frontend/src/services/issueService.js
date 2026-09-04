@@ -50,9 +50,4 @@ export const issueService = {
     const { data } = await apiClient.delete(`/issues/${issueId}`)
     return data
   },
-
-  async approveIssue(issueId, payload = {}) {
-    const { data } = await apiClient.post(`/issues/${issueId}/approve`, payload)
-    return data
-  },
 }
