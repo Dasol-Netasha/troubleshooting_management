@@ -193,7 +193,8 @@ export const useIssueForm = () => {
 
       router.push('/list')
     } catch (error) {
-      errorMessage.value = '저장에 실패했습니다.'
+      const detail = error?.response?.data?.detail
+      errorMessage.value = detail ? `저장에 실패했습니다: ${detail}` : '저장에 실패했습니다.'
       throw error
     } finally {
       saving.value = false

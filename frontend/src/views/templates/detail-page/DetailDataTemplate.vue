@@ -123,7 +123,7 @@ const detailLayoutSections = [
     leftRows: [{ orders: [15], rowSpan: 2 }],
     rightRows: [
       { orders: [16], rowSpan: 1 },
-      { orders: [17, 18], rowSpan: 1 },
+      { orders: [17], rowSpan: 1 },
     ],
   },
 ]
