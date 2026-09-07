@@ -43,8 +43,8 @@ INSERT INTO priority (priority_id, priority_name) VALUES (1, '중요');
 INSERT INTO priority (priority_id, priority_name) VALUES (2, '일반');
 
 -- issue
-INSERT INTO issue (issue_id, project_id, author, approval_yn, approved_by, approved_message, issue_description, occurred_date, phase_id, location_id, root_cause, production_tech_owner_id, status_id, temp_action, is_long_term, priority_id, completed_date, root_countermeasure, purchase_request_no, object_insert) VALUES (1, 1, '홍길동', TRUE, '관리자', '검토 완료', '비전 카메라 초점 불량으로 검사 이미지 흐림 발생', '2026-03-10', 2, 1, '렌즈 마운트 나사 풀림', 1, 3, '렌즈 마운트 재조립 및 초점 재조정', FALSE, 1, NULL, NULL, NULL, NULL);
-INSERT INTO issue (issue_id, project_id, author, approval_yn, approved_by, approved_message, issue_description, occurred_date, phase_id, location_id, root_cause, production_tech_owner_id, status_id, temp_action, is_long_term, priority_id, completed_date, root_countermeasure, purchase_request_no, object_insert) VALUES (2, 2, '김철수', FALSE, NULL, NULL, '고객사 Site 출하 검사 중 조명 밝기 불균일', '2026-04-02', 3, 2, '조명 드라이버 노후화로 출력 저하', 2, 5, '조명 드라이버 임시 교체', TRUE, 2, '2026-04-15', '조명 드라이버 정기 교체 주기 수립', 'PR-2026-0142', NULL);
+INSERT INTO issue (issue_id, project_id, author, issue_description, occurred_date, phase_id, location_id, root_cause, production_tech_owner_id, status_id, temp_action, is_long_term, priority_id, completed_date, root_countermeasure, purchase_request_no, object_insert) VALUES (1, 1, '홍길동', '비전 카메라 초점 불량으로 검사 이미지 흐림 발생', '2026-03-10', 2, 1, '렌즈 마운트 나사 풀림', 1, 3, '렌즈 마운트 재조립 및 초점 재조정', FALSE, 1, NULL, NULL, NULL, NULL);
+INSERT INTO issue (issue_id, project_id, author, issue_description, occurred_date, phase_id, location_id, root_cause, production_tech_owner_id, status_id, temp_action, is_long_term, priority_id, completed_date, root_countermeasure, purchase_request_no, object_insert) VALUES (2, 2, '김철수', '고객사 Site 출하 검사 중 조명 밝기 불균일', '2026-04-02', 3, 2, '조명 드라이버 노후화로 출력 저하', 2, 5, '조명 드라이버 임시 교체', TRUE, 2, '2026-04-15', '조명 드라이버 정기 교체 주기 수립', 'PR-2026-0142', NULL);
 
 -- 다중 선택 필드는 issue의 단일 컬럼이 아니라 연결 테이블에 저장
 INSERT INTO issue_responsible_dept (issue_id, dept_id) VALUES (1, 3), (2, 1);
@@ -66,7 +66,6 @@ INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, deta
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('tech_dept_id', '기술부서', FALSE, NULL, 7, 'dropdown', 'tech_dept');
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('production_tech_owner_id', '생산기술담당자', FALSE, NULL, 8, 'dropdown', 'production_tech_owner');
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('status_id', '현재상태', TRUE, 2, 9, 'dropdown', 'status');
-INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('approval_yn', '승인상태', TRUE, 3, 999, 'boolean', NULL);
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('priority_id', '우선순위', TRUE, 4, 10, 'dropdown', 'priority');
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('is_long_term', '장기이슈여부', FALSE, NULL, 11, 'boolean', NULL);
 INSERT INTO issue_field_config (field_key, label, show_in_list, list_order, detail_order, input_type, option_source) VALUES ('root_cause', '발생원인', FALSE, NULL, 12, 'textarea', NULL);

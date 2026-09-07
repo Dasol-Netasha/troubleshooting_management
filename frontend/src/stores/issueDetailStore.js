@@ -28,12 +28,6 @@ export const useIssueDetailStore = defineStore('issueDetail', () => {
     }
   }
 
-  const approveIssue = async (targetIssueId, payload = {}) => {
-    const data = await issueService.approveIssue(targetIssueId, payload)
-    await fetchIssueDetail(targetIssueId)
-    return data
-  }
-
   const setErrorMessage = (message) => {
     errorMessage.value = String(message || '')
   }
@@ -45,7 +39,6 @@ export const useIssueDetailStore = defineStore('issueDetail', () => {
     loading,
     errorMessage,
     fetchIssueDetail,
-    approveIssue,
     setErrorMessage,
   }
 })

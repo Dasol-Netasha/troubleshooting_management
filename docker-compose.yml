@@ -9,7 +9,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-user}
       TZ: ${TZ:-Asia/Seoul}
       POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C.UTF-8"
-    # ports: 삭제 — 외부는 물론 호스트에도 노출하지 않음 (backend가 내부망 db:5432 로 접근)
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/00_init.sql:ro
