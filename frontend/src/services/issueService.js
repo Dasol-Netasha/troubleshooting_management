@@ -61,8 +61,28 @@ export const issueService = {
     return data
   },
 
+  async updateComment(issueId, commentId, payload) {
+    const { data } = await apiClient.put(`/issues/${issueId}/comments/${commentId}`, payload)
+    return data
+  },
+
+  async deleteComment(issueId, commentId) {
+    const { data } = await apiClient.delete(`/issues/${issueId}/comments/${commentId}`)
+    return data
+  },
+
   async createCommentReply(issueId, commentId, payload) {
     const { data } = await apiClient.post(`/issues/${issueId}/comments/${commentId}/reply`, payload)
+    return data
+  },
+
+  async updateCommentReply(issueId, commentId, payload) {
+    const { data } = await apiClient.put(`/issues/${issueId}/comments/${commentId}/reply`, payload)
+    return data
+  },
+
+  async deleteCommentReply(issueId, commentId) {
+    const { data } = await apiClient.delete(`/issues/${issueId}/comments/${commentId}/reply`)
     return data
   },
 }
