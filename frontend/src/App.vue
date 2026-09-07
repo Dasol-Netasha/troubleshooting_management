@@ -4,6 +4,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router'
 import { useUiModeStore } from '@/stores/uiModeStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useAuthStore } from '@/stores/authStore'
+import { resetIssueListFilters } from '@/composables/shared/useIssueListPage'
 import Header from '@/components/organisms/Header.vue'
 
 const route = useRoute()
@@ -19,6 +20,7 @@ const mainMenuItems = []
 
 const handleLogout = () => {
   authStore.logout()
+  resetIssueListFilters()
   router.push('/login')
 }
 

@@ -55,7 +55,7 @@ watch(
 
       <Input v-model="query" size="sm" :placeholder="`${field?.label || ''} 검색`" />
 
-      <ul class="mt-3 max-h-72 overflow-y-auto rounded-lg border border-slate-200">
+      <ul class="mt-3 h-72 overflow-y-auto rounded-lg border border-slate-200">
         <li v-for="option in filteredOptions" :key="option.value" class="border-b border-slate-100 last:border-b-0">
           <button
             type="button"

@@ -6,6 +6,10 @@ const TEXT_INPUT_TYPES = new Set(['text', 'textarea'])
 const sharedFilterValues = ref({})
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50]
 
+export const resetIssueListFilters = () => {
+  sharedFilterValues.value = {}
+}
+
 const sortByListOrder = (fields) => {
   return [...fields].sort((a, b) => {
     const left = Number(a?.list_order ?? 9999)
