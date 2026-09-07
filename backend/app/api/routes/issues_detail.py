@@ -366,6 +366,36 @@ def create_issue_comment(issue_id: int, payload: dict[str, Any], db: Session = D
     return _serialize_comment(comment)
 
 
+@router.put("/{issue_id}/comments/{comment_id}")
+def update_issue_comment(
+    issue_id: int,
+    comment_id: int,
+    payload: dict[str, Any],
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    comment = db.get(IssueComment, comment_id)
+    if comment is None or comment.issue_id != issue_id:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    comment.author, comment.content = _validate_comment_payload(payload)
+    reply = db.execute(select(IssueCommentReply).where(IssueCommentReply.comment_id == comment_id)).scalar_one_or_none()
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return _serialize_comment(comment, reply)
+
+
+@router.delete("/{issue_id}/comments/{comment_id}")
+def delete_issue_comment(issue_id: int, comment_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    comment = db.get(IssueComment, comment_id)
+    if comment is None or comment.issue_id != issue_id:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    db.delete(comment)
+    db.commit()
+    return {"comment_id": comment_id}
+
+
 @router.post("/{issue_id}/comments/{comment_id}/reply")
 def create_issue_comment_reply(
     issue_id: int,
@@ -385,6 +415,41 @@ def create_issue_comment_reply(
     db.commit()
     db.refresh(reply)
     return _serialize_comment(comment, reply)
+
+
+@router.put("/{issue_id}/comments/{comment_id}/reply")
+def update_issue_comment_reply(
+    issue_id: int,
+    comment_id: int,
+    payload: dict[str, Any],
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    comment = db.get(IssueComment, comment_id)
+    if comment is None or comment.issue_id != issue_id:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    reply = db.execute(select(IssueCommentReply).where(IssueCommentReply.comment_id == comment_id)).scalar_one_or_none()
+    if reply is None:
+        raise HTTPException(status_code=404, detail="Reply not found")
+
+    reply.author, reply.content = _validate_comment_payload(payload)
+    db.add(reply)
+    db.commit()
+    db.refresh(reply)
+    return _serialize_comment(comment, reply)
+
+
+@router.delete("/{issue_id}/comments/{comment_id}/reply")
+def delete_issue_comment_reply(issue_id: int, comment_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    comment = db.get(IssueComment, comment_id)
+    if comment is None or comment.issue_id != issue_id:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    reply = db.execute(select(IssueCommentReply).where(IssueCommentReply.comment_id == comment_id)).scalar_one_or_none()
+    if reply is None:
+        raise HTTPException(status_code=404, detail="Reply not found")
+
+    db.delete(reply)
+    db.commit()
+    return {"comment_id": comment_id}
 
 
 @router.get("/{issue_id}")
